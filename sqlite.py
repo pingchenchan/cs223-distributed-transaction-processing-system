@@ -78,7 +78,7 @@ class Database:
         self.connection.isolation_level = None  # This line is to enable manual transaction control
         self.cursor = self.connection.cursor()
 
-    def execute(self, query, params=None):
+    def execute(self, query, params=None)-> bool:
         try:
             self.cursor.execute("BEGIN;")
             if params:

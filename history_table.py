@@ -3,7 +3,10 @@ import sqlite3
 from sqlite import *
 
 
+
 class Hop:
+    VALID_STATUSES = {'Active', 'Completed', 'Failed'} 
+
     def __init__(self, hop_id, action, table_name, data):
         self.hop_id = hop_id
         self.action = action
@@ -11,6 +14,18 @@ class Hop:
         self.status = 'Active'
         self.end_time = None
         self.data = data
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        if value in self.VALID_STATUSES:
+            self._status = value
+        else:
+            raise ValueError(f"Status must be one of {self.VALID_STATUSES}, not '{value}'")
+
 
 class Transaction:
     def __init__(self, transaction_id, transaction_type, total_hops):
