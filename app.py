@@ -81,8 +81,14 @@ async def thread_handler(db):
                 
                 success = message.result
                 print(f"=> Backward Processing info: {message.transaction_type}-hop{message.hop_id }, success = {success }.")
-                #TODO retry_count = message.retry_count
-
+                
+                #complete the transaction
+                transaction_completed = history_table.complete_transaction(message.transaction_id)
+                print(f"=> Transaction {message.transaction_type} completed: {transaction_completed}")
+                
+                #TODO retry_count 
+                
+                # retry_count = message.retry_count
                 # if not success and retry_count < MAX_RETRIES:
                 #     print("Resending message.")
                 #     message['retry_count'] = retry_count + 1
@@ -95,21 +101,20 @@ async def thread_handler(db):
 
             elif message_type == MessageType.FORWARD: 
                 print(f"=> Forward Processing info: {message.transaction_type}-hop{message.hop_id }message.")
-                result = await execute_hop(db, message.transaction_id, message.hop_id)
-                
-                # print('Forward message result: ', result)
-                # Send a backward message with completion or failure information
-                backward_message = BackwardMessage(message_type=MessageType.BACKWARD, transaction_type=transaction_type, transaction_id=message.transaction_id, hop_id=message.hop_id,origin_server=message.target_server, target_server=message.origin_server, result=result)
-                asyncio.create_task(send_message(backward_message, f"ws://localhost:{message.origin_server}")) 
-                #creat a task to async send message to order server, in order to not block the main thread
-
-
-                #TODO send backward message to the origin server
-
-
 
                 # Process the current hop
+                result = await execute_hop(db, message.transaction_id, message.hop_id)
+                
                 # Send a backward message with completion or failure information
+                backward_message = BackwardMessage(message_type=MessageType.BACKWARD, transaction_type=transaction_type, transaction_id=message.transaction_id, hop_id=message.hop_id,origin_server=message.target_server, target_server=message.origin_server, result=result)
+                
+                #creat a task to async send message to order server, in order to not block the main thread
+                asyncio.create_task(send_message(backward_message, f"ws://localhost:{message.origin_server}")) 
+                
+
+
+
+                
 
             elif message_type == MessageType.USER :
                 pass
@@ -122,13 +127,13 @@ async def thread_handler(db):
                 #Forwards the message to the orders server
                 if transaction_type in [ TransactionType.T3, TransactionType.T4] and message.hop.hop_id ==2:
                     forward_message = ForwardMessage( message_type=MessageType.FORWARD, transaction_type=transaction_type, target_server=ORDER_SERVER_PORT, transaction_id=message.hop.transaction_id, hop_id=message.hop.hop_id, origin_server=SERVER_PORT, data=message.hop.data)
-                    asyncio.create_task(send_message(forward_message, f"ws://localhost:{ORDER_SERVER_PORT}")) 
+                    
                     #creat a task to async send message to order server, in order to not block the main thread
-                
-                    # reply = await send_message(forward_message, f"ws://localhost:{ORDER_SERVER_PORT }")
-                    # do not need to wait for the reply
-                    # print(f"=> The forward reply is: '{reply}'")
+                    asyncio.create_task(send_message(forward_message, f"ws://localhost:{ORDER_SERVER_PORT}")) 
+                    
+
                 else:
+                    #p rocess the current hop
                     await execute_hop(db, message.hop.transaction_id, message.hop.hop_id)
                     
                     print(f"=> HOP Processing info: {message.transaction_type}-hop{message.hop.hop_id }")

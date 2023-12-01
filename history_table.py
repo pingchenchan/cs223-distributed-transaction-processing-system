@@ -6,7 +6,7 @@ import message
 
 
 class Hop:
-    VALID_STATUSES = {'Active', 'Completed', 'Failed','Executing'} 
+    VALID_STATUSES = {'Active', 'Completed', 'Failed'} 
     def __init__(self,transaction_id, hop_id, data):
         self.transaction_id = transaction_id 
         self.hop_id = hop_id
@@ -100,8 +100,15 @@ class HistoryTable:
         if transaction:
             transaction.status = 'Completed'
             transaction.end_time = datetime.now()
+            for hop in transaction.hops:
+                if transaction.hops[hop].status != 'Completed':
+                    hop.status = 'Completed'
+                    hop.end_time = datetime.now()
+            return True
+  
         else:
             print(f"Transaction {transaction_id} not found.")
+            return False
 
 
 # Usage
