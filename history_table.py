@@ -1,16 +1,15 @@
 from datetime import datetime
 import sqlite3
 from sqlite import *
-
+import uuid
+import message
 
 
 class Hop:
-    VALID_STATUSES = {'Active', 'Completed', 'Failed'} 
-
-    def __init__(self, hop_id, action, table_name, data):
+    VALID_STATUSES = {'Active', 'Completed', 'Failed','Executing'} 
+    def __init__(self,transaction_id, hop_id, data):
+        self.transaction_id = transaction_id 
         self.hop_id = hop_id
-        self.action = action
-        self.table_name = table_name
         self.status = 'Active'
         self.end_time = None
         self.data = data
@@ -41,30 +40,47 @@ class Transaction:
 
 
 class HistoryTable:
+    _instance = None 
+    _is_initialized = False 
+
+    def __new__(cls): 
+        if cls._instance is None: # Singleton pattern
+            cls._instance = super(HistoryTable, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self):
-        self.transactions = {}
+        if not self._is_initialized:
+            self.transactions = {}
+            self.current_transaction_id = 0
+            self._is_initialized = True
 
-    def add_transaction(self, transaction_id, transaction_type, total_hops):
+
+    def add_transaction(self, transaction_type, total_hops)-> str:
+        transaction_id = str(uuid.uuid4())  # Generate a random transaction ID
         self.transactions[transaction_id] = Transaction(transaction_id, transaction_type, total_hops)
+        # self.generate_corresponding_hop(transaction_id, data)
+        
+        return transaction_id
 
-    def add_hop(self, transaction_id, hop_id, action, table_name, data):
-        transaction = self.transactions.get(transaction_id)
-        if transaction:
-            transaction.hops[hop_id] = Hop(hop_id, action, table_name, data)
+    def generate_corresponding_hop(self, transaction_id, data)-> Hop:
+        transaction_type = self.transactions.get(transaction_id).transaction_type
+        if transaction_type in [transaction_type.T1, transaction_type.T2, transaction_type.T5, transaction_type.T6, transaction_type.T7]:
+            self.transactions[transaction_id].hops[1] = Hop(transaction_id=transaction_id, hop_id=1, data=data) #hop_id starts from 1
+        if transaction_type in [transaction_type.T3, transaction_type.T4]:
+            self.transactions[transaction_id].hops[1] = Hop(transaction_id=transaction_id, hop_id=1, data=data)
+            self.transactions[transaction_id].hops[2] = Hop(transaction_id=transaction_id, hop_id=2, data=data)
+        return self.transactions[transaction_id].hops
+
+
+
+    def complete_transaction_hop(self,hop):
+        transaction = self.transactions.get(hop.transaction_id)
+        if hop and hop.status == 'Active':
+            hop.status = 'Completed'
+            hop.end_time = datetime.now()
+            transaction.last_completed_hop = hop.hop_id
         else:
-            print(f"Transaction {transaction_id} not found.")
-
-
-    def complete_transaction_hop(self, transaction_id, hop_id):
-        transaction = self.transactions.get(transaction_id)
-        if transaction:
-            hop = transaction.hops.get(hop_id)
-            if hop and hop.status == 'Active':
-                hop.status = 'Completed'
-                hop.end_time = datetime.now()
-                transaction.last_completed_hop = hop_id
-            else:
-                print(f"Unable to complete hop: {hop_id} not found or already completed.")
+            print(f"Unable to complete hop: {hop_id} not found or already completed.")
 
     def find_next_hop(self, transaction_id):
         transaction = self.transactions.get(transaction_id)

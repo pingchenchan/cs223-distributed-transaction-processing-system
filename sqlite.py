@@ -92,9 +92,15 @@ class Database:
             self.cursor.execute("ROLLBACK;")
             return False
 
+
+
     def fetchone(self, query, params=None):
-        self.cursor.execute(query, params)
+        if params:
+            self.cursor.execute(query, params)
+        else:
+            self.cursor.execute(query)  # 没有 params
         return self.cursor.fetchone()
+
 
     def fetchall(self, query, params=None):
         self.cursor.execute(query, params)
@@ -102,6 +108,12 @@ class Database:
 
     def close(self):
         self.connection.close()
+
+def get_row_count( db, table_name):
+    query = f"SELECT COUNT(*) FROM {table_name};"
+    return db.fetchone(query)[0]
+
+
 
 def transaction_1(db, name, email, address):
     return db.execute("INSERT INTO Customers (name, email, address) VALUES (?, ?, ?);", (name, email, address))
@@ -139,6 +151,7 @@ def transaction_6(db, camera_id):
 
 def transaction_7(db, order_id):
     order = db.fetchall("SELECT * FROM Orders WHERE order_id = ?;", (order_id,))
+    print('order info:',order)
     return bool(order)
 
 
