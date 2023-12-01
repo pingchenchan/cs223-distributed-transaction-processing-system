@@ -2,7 +2,8 @@ from datetime import datetime
 import sqlite3
 from sqlite import *
 import uuid
-import message
+from message import *
+from collections import defaultdict
 
 
 class Hop:
@@ -11,6 +12,7 @@ class Hop:
         self.transaction_id = transaction_id 
         self.hop_id = hop_id
         self.status = 'Active'
+        self.start_time = datetime.now()
         self.end_time = None
         self.data = data
 #TODO  which server exe this hop info
@@ -80,8 +82,17 @@ class HistoryTable:
             hop.status = 'Completed'
             hop.end_time = datetime.now()
             transaction.last_completed_hop = hop.hop_id
+            if transaction.last_completed_hop == transaction.total_hops:
+                transaction.status = 'Completed'
+                transaction.end_time = datetime.now()
+                return True
+            else:
+                return False
+        elif hop and hop.status == 'Completed':
+            pass
+            # print('Hop has already been completed.', 'Hop ID:', hop.hop_id,'transaction type:', transaction.transaction_type)
         else:
-            print(f"Unable to complete hop: {hop_id} not found or already completed.")
+            print(f"Unable to complete hop: {hop.hop_id} not found or status id fail. Hop status is : {hop.status }")
 
     def find_next_hop(self, transaction_id):
         transaction = self.transactions.get(transaction_id)
@@ -95,25 +106,73 @@ class HistoryTable:
             print(f"Transaction {transaction_id} not found.")
 
 
-
-    def complete_transaction(self, transaction_id):
-        transaction = self.transactions.get(transaction_id)
-        if transaction:
-            transaction.status = 'Completed'
-            transaction.end_time = datetime.now()
-            for hop in transaction.hops:
-                if transaction.hops[hop].status != 'Completed':
-                    hop.status = 'Completed'
-                    hop.end_time = datetime.now()
-            return True
   
-        else:
-            print(f"Transaction {transaction_id} not found.")
-            return False
+
+    
 
 
-# Usage
-# history_table = HistoryTable()
-# history_table.add_transaction('TX123', 'Insert', 2)
-# history_table.add_hop('TX123', 1, 'Insert', 'Cameras', {'camera_id': 4, 'model_name': 'Nikon D5600', 'resolution': '24.2MP', 'lens_type': 'AF-P DX', 'price': 600.00})
-# history_table.complete_transaction('TX123')
+    def write_transaction_log(self, each_transaction=True):
+        """Write the transaction log to a file."""
+        
+        total_latency = 0
+        total_transactions = 0
+        total_first_hop_latency_by_type = defaultdict(int)
+        total_second_hop_latency_by_type = defaultdict(int)
+        first_hop_count_by_type = defaultdict(int) 
+        second_hop_count_by_type = defaultdict(int)
+
+        total_latency_by_type = defaultdict(float)  # Save the total latency for each type of transaction
+        count_by_type = defaultdict(int)  # Save the count for each type of transaction
+
+        with open('transaction_log.txt', 'w') as f:
+            if each_transaction:
+                f.write("Transaction Log Summary\n")
+                f.write("======================\n\n")
+
+            for transaction_id, transaction in self.transactions.items():
+                transaction_latency = "Not finished"
+                if transaction.end_time:
+                    transaction_latency = (transaction.end_time - transaction.start_time).total_seconds() * 1000000  # in microseconds
+                    total_latency += transaction_latency
+                    total_transactions += 1
+                    total_latency_by_type[transaction.transaction_type] += transaction_latency
+                    count_by_type[transaction.transaction_type] += 1
+                if each_transaction:
+                    f.write(f"Transaction ID: {transaction_id}\n")
+                    # f.write(f"    Start Time: {transaction.start_time.strftime('%H:%M:%S.%f')}, End Time: {transaction.end_time.strftime('%H:%M:%S.%f') if transaction.end_time else 'Not finished'}, Latency (us): {transaction_latency}\n")
+                    f.write(f"    Transaction Type: {transaction.transaction_type.name}, Latency (us): {transaction_latency}\n")
+                for hop in transaction.hops.values():
+                    hop_latency = "Not finished"
+                    if hop.end_time:
+                        hop_latency = (hop.end_time - hop.start_time).total_seconds() * 1000000
+                        # if hop.hop_id in [1, 2] and transaction.transaction_type in [TransactionType.T3, TransactionType.T4]:
+                        if hop.hop_id == 1:
+                            total_first_hop_latency_by_type[transaction.transaction_type] += hop_latency
+                            first_hop_count_by_type[transaction.transaction_type] += 1
+                        elif hop.hop_id == 2:
+                            total_second_hop_latency_by_type[transaction.transaction_type] += hop_latency
+                            second_hop_count_by_type[transaction.transaction_type] += 1
+                    # f.write(f"    Hop ID: {hop.hop_id}, Start Time: {hop.start_time.strftime('%H:%M:%S.%f')}, End Time: {hop.end_time.strftime('%H:%M:%S.%f') if hop.end_time else 'Not finished'}, Latency (us): {hop_latency}\n")
+                    # f.write(f"    Hop ID: {hop.hop_id}, Latency (us): {hop_latency}\n")
+
+            # Calculate and write average latencies
+            f.write("\nOverall Summary\n")
+            f.write("---------------\n")
+            avg_transaction_latency = total_latency / total_transactions if total_transactions > 0 else 0
+            f.write(f"Average Transaction Latency: {avg_transaction_latency:.2f} microseconds\n\n")
+            
+            f.write("Average Latency by Transaction Type\n")
+            f.write("-----------------------------------\n")
+            for transaction_type in TransactionType:
+                avg_latency = (total_latency_by_type[transaction_type] / count_by_type[transaction_type]) if count_by_type[transaction_type] > 0 else 0
+                f.write(f"{transaction_type.name}: {avg_latency:7.2f} microseconds\n")
+
+            f.write("\nAverage Latency by Hop for Each Transaction Type\n")
+            f.write("------------------------------------------------\n")
+            for transaction_type in TransactionType:
+                avg_latency = (total_latency_by_type[transaction_type] / count_by_type[transaction_type]) if count_by_type[transaction_type] > 0 else 0
+                avg_first_hop_latency = (total_first_hop_latency_by_type[transaction_type] / first_hop_count_by_type[transaction_type]) if first_hop_count_by_type[transaction_type] > 0 else 0
+                avg_second_hop_latency = (total_second_hop_latency_by_type[transaction_type] / second_hop_count_by_type[transaction_type]) if second_hop_count_by_type[transaction_type] > 0 else 0
+                f.write(f"{transaction_type.name} - Average TTransaction Latency: {avg_latency:7.2f} microseconds, First Hop: {avg_first_hop_latency:7.2f} microseconds, Second Hop: {avg_second_hop_latency:7.2f} microseconds\n")
+
+            f.write("\n")

@@ -2,6 +2,7 @@ from enum import Enum, auto
 import time
 import json
 import websockets
+import asyncio
 # Message class
 # 1. User message: from command line, execute transaction
 # 2. Detailed message: for detailed message
@@ -49,19 +50,7 @@ def message_to_json(message):
         })
 
 
-class WebSocketClient:
-    @staticmethod
-    async def send_message(message, uri):
-        message_json = message_to_json(message)
-        try:
-            async with websockets.connect(uri) as websocket:
-                await websocket.send(message_json)
-                return await websocket.recv()
-                #TODO received time
-        except websockets.ConnectionClosedError as e:
-            print(f"Connection closed: {e}")
-        except Exception as e:
-            print(f"Error sending message: {e}")
+
 
 class Message:
     def __lt__(self, other):
@@ -140,3 +129,37 @@ class BackwardMessage(Message):
 async def send_message(message, uri):
     reply = await WebSocketClient.send_message(message, uri)
     return reply
+
+class WebSocketClient:
+    # 初始化一个Semaphore用于限制并发连接数量
+    _semaphore = asyncio.Semaphore(1000)  # 例如，最多允许10个并发连接
+
+    @staticmethod
+    async def send_message(message, uri):
+        message_json = message_to_json(message)
+        async with WebSocketClient._semaphore:  # 使用Semaphore来限制并发连接
+            try:
+                async with websockets.connect(uri) as websocket:
+                    await websocket.send(message_json)
+                    # 如果您不需要等待响应，可以直接移除下一行
+                    return await websocket.recv()
+            except websockets.ConnectionClosedError as e:
+                print(f"Connection closed: {e}")
+            except Exception as e:
+                print(f"Error sending message: {e}")
+
+
+class WebSocketClientForBatchMessage:
+    _semaphore = asyncio.Semaphore(1000) 
+    @staticmethod
+    async def send_messages(messages, uri):
+        async with WebSocketClient._semaphore:
+            try:
+                async with websockets.connect(uri) as websocket:
+                    for message in messages:
+                        await websocket.send(message)
+                        reply = await websocket.recv()
+            except websockets.ConnectionClosedError as e:
+                print(f"Connection closed: {e}")
+            except Exception as e:
+                print(f"Error sending messages: {e}")

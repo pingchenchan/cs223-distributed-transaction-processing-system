@@ -5,6 +5,7 @@ import asyncio
 import websockets
 import time
 from message import *
+from history_table import *
 
 
 
@@ -39,25 +40,50 @@ def generate_transaction_data(transaction_type):
         return {'order_id': order_id}
 
 async def send_testing_message(uri):
-    for i in range(300):
-        sleep_for = random.uniform(0.0001, 0.001)
-        await asyncio.sleep(sleep_for)
+    messages = [] 
+    start_time = time.time()
+    for i in range(100):
+        # sleep_for = random.uniform(0.0001, 0.001)
+        # await asyncio.sleep(sleep_for)
 
-        # randomly choose a transaction type
-        transaction_type = random.choice([TransactionType.T1, TransactionType.T2,  TransactionType.T5, TransactionType.T6, TransactionType.T7])
+        '''Choose transaction types, feel free to change it '''
+        # transaction_type = random.choice([TransactionType.T1, TransactionType.T2,  TransactionType.T5, TransactionType.T6, TransactionType.T7])
+        transaction_type = random.choice([TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7])
         # transaction_type = random.choice([TransactionType.T3, TransactionType.T4])
         
-        ## create a dummy data for the transaction
+
         data = generate_transaction_data(transaction_type)
-        # create a UserMessage
         message = UserMessage(MessageType.USER, transaction_type, data)
 
-        # transform the message to JSON
-        # reply = await WebSocketClient.send_message(message, uri)
 
-        asyncio.create_task(WebSocketClient.send_message(message, uri)) 
+        '''method 1: send batch messages by using WebSocketClientForBatchMessage()'''
+        message_json = message_to_json(message)
+        messages.append(message_json)
+
+
+        '''method 2: send message one by one with await WebSocketClient.send_message(message, uri)'''
+        # reply = await WebSocketClient.send_message(message, uri)
+        # print(f"=> The client info: idx-{i} msg has {reply}")
+
+        '''method 3: send batch messages by using WebSocketClient()'''
+        # asyncio.create_task(WebSocketClient.send_message(message, uri)) 
+    
+    '''Following code is for method 1:'''
+    '''For other methods, please comment out the following line'''
+    reply = await WebSocketClientForBatchMessage.send_messages(messages, uri) 
+
+
+    '''calculate the time for processing messages'''
+    print(f"=> The client info: idx-{i} msg has {reply}")
+    end_time = time.time()  # 
+    elapsed_time = end_time - start_time  # 
+    print(f"Reply received in {elapsed_time:.2f} seconds: {reply}")
+
+    '''write transaction log to history table'''
+    history_table = HistoryTable()
+    history_table.write_transaction_log(each_transaction=False)
+    print(f"wrote transaction log ")
+
         
 
-        # print(f"=> The client info: idx-{i} msg has {reply}")
-    #call_complete_time
        

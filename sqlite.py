@@ -117,49 +117,49 @@ def get_row_count( db, table_name):
 
 def transaction_1(db, name, email, address):
     db.execute("INSERT INTO Customers (name, email, address) VALUES (?, ?, ?);", (name, email, address))
-    print('SQL info: T1 successed, customer_count',get_row_count(db,'Customers'))
+    # print('SQL info: T1 successed, customer_count',get_row_count(db,'Customers'))
     return True
 
 def transaction_2(db, model_name, resolution, lens_type, price):
     db.execute("INSERT INTO Cameras (model_name, resolution, lens_type, price) VALUES (?, ?, ?, ?);", (model_name, resolution, lens_type, price))
-    print('SQL info: T3_1 successed, customer_count',get_row_count(db, 'Cameras'))
+    # print('SQL info: T3_1 successed, customer_count',get_row_count(db, 'Cameras'))
     return True
 
 def transaction_3_hop1(db, customer_id):
     customer_count = db.fetchone("SELECT COUNT(*) FROM Customers WHERE customer_id = ?;", (customer_id,))[0]
-    print('SQL info: T3_1 successed, customer_count: ', customer_count)
+    # print('SQL info: T3_1 successed, customer_count: ', customer_count)
     return True
 
 def transaction_3_hop2(db, customer_id, quantity):
     result = db.execute("INSERT INTO Orders (customer_id, camera_id, quantity_ordered) VALUES (?, ?, ?);", (customer_id, 1, quantity))  # Assuming a default camera_id of 1
-    print('SQL info: T3_2 successed,  result: ', result)
+    # print('SQL info: T3_2 successed,  result: ', result)
     return  True
 
 def transaction_4_hop1(db, camera_id):
     camera_count = db.fetchone("SELECT COUNT(*) FROM Cameras WHERE camera_id = ?;", (camera_id,))[0]
-    print('SQL info: T4_1 successed, camera_count info: ', camera_count)
+    # print('SQL info: T4_1 successed, camera_count info: ', camera_count)
     return True
 
 def transaction_4_hop2(db, camera_id, quantity):
     result =  db.execute("INSERT INTO Orders (customer_id, camera_id, quantity_ordered) VALUES (?, ?, ?);", (1, camera_id, quantity))  # Assuming a default customer_id of 1
-    print('SQL info: T4_2 successed, result info:', result)
+    # print('SQL info: T4_2 successed, result info:', result)
     return True
 
 def transaction_5(db, customer_id):
     address = db.fetchone("SELECT address FROM Customers WHERE customer_id = ?;", (customer_id,))
-    print('SQL info: T7 successed, address info:',address)
+    # print('SQL info: T7 successed, address info:',address)
     return True
     
 
 def transaction_6(db, camera_id):
     price = db.fetchone("SELECT price FROM Cameras WHERE camera_id = ?;", (camera_id,))
-    print('SQL info: T7 successed, price info:',price)
+    # print('SQL info: T7 successed, price info:',price)
     return True
     
 
 def transaction_7(db, order_id):
     order = db.fetchall("SELECT * FROM Orders WHERE order_id = ?;", (order_id,))
-    print('SQL info: T7 successed, order info:',order)
+    # print('SQL info: T7 successed, order info:',order)
     return True
 
 

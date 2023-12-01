@@ -21,7 +21,7 @@ SERVER_PORT = 8898
 ORDER_SERVER_PORT = 8898
 
 
-#TODO add first hop/transaction start & fininsh time to txt file
+#TODO add first hop/transaction start & fininsh time to txt file(latency)
 #TODO record edges of each transaction, total transmition 
 #TODO hop waiting time in queue
 
@@ -33,10 +33,10 @@ async def listener_handler(websocket, path):
     client_id = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
     connected_clients[client_id] = websocket
     try:
-        async for message in websocket:
-            # print(f"Received from {client_id}: '{message}'")
+        async for message in websocket:        
             try:
                 message_data = json.loads(message)
+                await connected_clients[client_id].send(f"successful sent to server" )
                 message_type = MessageType[message_data['message_type']]
                 if message_type == MessageType.USER:
                     transaction_type = TransactionType[message_data['transaction_type']]
@@ -48,7 +48,7 @@ async def listener_handler(websocket, path):
                     # for hop_id in range(1, total_hops+1): #hop index starts from 1
                     hop_message = HopMessage(MessageType.HOP, transaction_type, hops[1])
                     await priority_queue.put(( client_id, hop_message ))
-                    await connected_clients[client_id].send(f"successful sent to server" )
+                    # await connected_clients[client_id].send(f"successful sent to server" )
 
 
 
@@ -62,7 +62,7 @@ async def listener_handler(websocket, path):
                     target_server = message_data['target_server']
                     data = message_data['data']
                     hop_message = ForwardMessage(message_type=MessageType.FORWARD, transaction_type=transaction_type, target_server=target_server, transaction_id=transaction_id, hop_id=hop_id, origin_server=origin_server, data=data)
-                    print('=> The forward info: server successful receive forward message')
+                    # print('=> The forward info: server successful receive forward message')
                     # await connected_clients[client_id].send('successful receive forward process message)
                     # The client doesn't use await so it doesn't need to send messages back to the client.
                     await priority_queue.put(( client_id, hop_message ))  # 1 is the priority
@@ -76,7 +76,7 @@ async def listener_handler(websocket, path):
                     result = message_data['result']
                     hop_message = BackwardMessage(message_type=MessageType.BACKWARD, transaction_type=transaction_type, transaction_id=transaction_id, hop_id=hop_id,origin_server=origin_server, target_server=target_server, result=result)
                     await priority_queue.put(( client_id, hop_message ))
-                print(f"priority_queue.qsize is {priority_queue.qsize()}")
+                # print (f"priority_queue.qsize is {priority_queue.qsize()}")
 
             except json.JSONDecodeError:
                 print("Error parsing JSON")
@@ -103,28 +103,37 @@ def Acquire_locks(transaction_type):
 
 
 async def thread_handler(db):
+    # sleep_for = random.uniform(2, 3)
+    # await asyncio.sleep(1)
     while True:
         # Wait until an item is available, asynchronously
+        
         client_id , message  = await priority_queue.get()
         transaction_type = message.transaction_type
         message_type = message.message_type
         try:
             # print('message_type',message_type,'message', message)
+            """   Message Type: BACKWARD   """
             if message_type == MessageType.BACKWARD: 
-                
                 success = message.result #bool
-                print(f"=> Backward Processing info: {message.transaction_type}-hop{message.hop_id }, success = {success }.")
+                # print(f"=> Backward Processing info: {message.transaction_type}-hop{message.hop_id }, success = {success }.")
                 
                 #TODO complete_hop -> if is last hop, complete the transaction
                 if success: #if is secend hop, complete the transaction
-                    transaction_completed = history_table.complete_transaction(message.transaction_id)
+                    hop = history_table.transactions.get(message.transaction_id).hops.get(message.hop_id)
+                    transaction_completed = history_table.complete_transaction_hop(hop)
                 else:
                     pass
 
 
-                print(f"=> Transaction {message.transaction_type} completed: {transaction_completed}")
+                # print(f"=> Transaction {message.transaction_type} completed: {transaction_completed}")
                 
                 #TODO push secend hop into priority queue
+                if message.hop_id == 1:
+                    # print('message.hop_id < message.total_hops',message.hop_id , message.total_hops)
+                    next_hop = history_table.transactions.get(message.transaction_id).hops.get(2)
+                    hop_message = HopMessage(MessageType.HOP, transaction_type, next_hop)
+                    await priority_queue.put(( client_id, hop_message ))
 
 
                 #TODO                 
@@ -138,9 +147,9 @@ async def thread_handler(db):
                     
                 # Process completed hop and update the history table
                 # Additional logic for processing the message goes here
-
-            elif message_type == MessageType.FORWARD: 
-                print(f"=> Forward Processing info: {message.transaction_type}-hop{message.hop_id }message.")
+            '''   Message Type: FORWARD   '''
+            if message_type == MessageType.FORWARD:
+                # print(f"=> Forward Processing info: {message.transaction_type}-hop{message.hop_id }message.")
 
                 # Process the current hop
                 result = await execute_hop(db, message.transaction_id, message.hop_id)
@@ -150,41 +159,45 @@ async def thread_handler(db):
                 backward_message = BackwardMessage(message_type=MessageType.BACKWARD, transaction_type=transaction_type, transaction_id=message.transaction_id, hop_id=message.hop_id,origin_server=message.target_server, target_server=message.origin_server, result=result)
                 
                 #creat a task to async send message to order server, in order to not block the main thread
-                asyncio.create_task(send_message(backward_message, f"ws://localhost:{message.origin_server}")) 
-                
-
-
-
-                
-
-            elif message_type == MessageType.USER :
+                asyncio.create_task(send_message(backward_message, f"ws://localhost:{message.origin_server}"))  
+            '''   Message Type: USER   '''
+            if message_type == MessageType.USER :
                 pass
                 # Can delete this part, every user message will be transformed to hop message 
                 # and put into priority queue by listener_handler function
 
-    
-            elif message_type == MessageType.HOP: 
+            '''   Message Type: HOP   '''
+            if message_type == MessageType.HOP: 
                 #TODO  Locking logic
                 #Forwards the message to the orders server
-                if transaction_type in [ TransactionType.T3, TransactionType.T4] and message.hop.hop_id ==2:
-                    forward_message = ForwardMessage( message_type=MessageType.FORWARD, transaction_type=transaction_type, target_server=ORDER_SERVER_PORT, transaction_id=message.hop.transaction_id, hop_id=message.hop.hop_id, origin_server=SERVER_PORT, data=message.hop.data)
-                    
-                    #creat a task to async send message to order server, in order to not block the main thread
-                    asyncio.create_task(send_message(forward_message, f"ws://localhost:{ORDER_SERVER_PORT}")) 
+                if transaction_type in [ TransactionType.T3, TransactionType.T4] :
+                    if message.hop.hop_id ==1:
+                        await execute_hop(db, message.hop.transaction_id, message.hop.hop_id)
+                        # print('message.hop.hop_id ==1, push hop2 to queue',message.hop.hop_id )
+                        next_hop = history_table.transactions.get(message.hop.transaction_id).hops.get(2)
+                        hop_message = HopMessage(MessageType.HOP, message.transaction_type, next_hop)
+                        await priority_queue.put(( client_id, hop_message ))
+                    if  message.hop.hop_id ==2:
+                        forward_message = ForwardMessage( message_type=MessageType.FORWARD, transaction_type=transaction_type, target_server=ORDER_SERVER_PORT, transaction_id=message.hop.transaction_id, hop_id=message.hop.hop_id, origin_server=SERVER_PORT, data=message.hop.data)
+                        #creat a task to async send message to order server, in order to not block the main thread
+                        asyncio.create_task(send_message(forward_message, f"ws://localhost:{ORDER_SERVER_PORT}")) 
                     
 
                 else:
                     #p rocess the current hop
                     await execute_hop(db, message.hop.transaction_id, message.hop.hop_id)
                     
-                    print(f"=> HOP Processing info: {message.transaction_type}-hop{message.hop.hop_id }")
+                    # print(f"=> HOP Processing info: {message.transaction_type}-hop{message.hop.hop_id }")
 
         finally:
             priority_queue.task_done()
+            # if priority_queue.qsize()>1:
+            #     print(f"handler priority_queue.qsize is {priority_queue.qsize()}")
         
 
 async def execute_hop(db, transaction_id, hop_id):
     #TODO if failed(LOCK) reinsert the hop into priority queue, priority +1
+    #TODO add logic handling server which own different table
     transaction = history_table.transactions.get(transaction_id)
     transaction_type = transaction.transaction_type
     if transaction:
@@ -221,9 +234,11 @@ async def execute_hop(db, transaction_id, hop_id):
                 result = transaction_7(db, hop.data['order_id'])
             if result:
                 # print('transaction_type: ', transaction_type, 'hop_id: ', hop_id, 'result: ', result)
-                history_table.complete_transaction_hop(hop)
-                if hop_id == transaction.total_hops:
-                    history_table.complete_transaction(transaction_id)
+                transaction_completed = history_table.complete_transaction_hop(hop)
+                #above function will completed transaction if hop_id == total_hops and return True if transaction completed else return False
+                
+                #TODO if transaction completed, send backward message to origin client
+
                 return True
         else:
             print(f"Unable to execute hop: {hop_id} not found or already executed.")
