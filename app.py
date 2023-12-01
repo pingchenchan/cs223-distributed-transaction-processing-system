@@ -20,6 +20,15 @@ calculate_total_hops = lambda transaction_type: 1 if transaction_type in [Transa
 SERVER_PORT = 8898
 ORDER_SERVER_PORT = 8898
 
+
+#TODO add first hop/transaction start & fininsh time to txt file
+#TODO record edges of each transaction, total transmition 
+#TODO hop waiting time in queue
+
+#TODO mute print
+#TODO hop1 priority = 10, hop2 priority = 0, backward priority = 5
+
+#TODO priority mechanism
 async def listener_handler(websocket, path):
     client_id = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
     connected_clients[client_id] = websocket
@@ -34,11 +43,17 @@ async def listener_handler(websocket, path):
                     total_hops = calculate_total_hops(transaction_type)
                     transaction_id = history_table.add_transaction(transaction_type, total_hops)
                     hops = history_table.generate_corresponding_hop(transaction_id, message_data['data'])
-                    for hop_id in range(1, total_hops+1): #hop index starts from 1
-                        hop_message = HopMessage(MessageType.HOP, transaction_type, hops[hop_id])
-                        await priority_queue.put(( client_id, hop_message ))
+                    #TODO only put first hop into priority queue, 
+                    # after first hop is completed, put second hop into priority queue
+                    # for hop_id in range(1, total_hops+1): #hop index starts from 1
+                    hop_message = HopMessage(MessageType.HOP, transaction_type, hops[1])
+                    await priority_queue.put(( client_id, hop_message ))
                     await connected_clients[client_id].send(f"successful sent to server" )
-        
+
+
+
+
+                # TODO if first hop failed, reinsert the first hop into the priority queue
                 elif message_type == MessageType.FORWARD:
                     transaction_type = TransactionType[message_data['transaction_type']]
                     transaction_id = message_data['transaction_id']
@@ -51,7 +66,7 @@ async def listener_handler(websocket, path):
                     # await connected_clients[client_id].send('successful receive forward process message)
                     # The client doesn't use await so it doesn't need to send messages back to the client.
                     await priority_queue.put(( client_id, hop_message ))  # 1 is the priority
-                # print(f"priority_queue.qsize is {priority_queue.qsize()}")
+                
                 elif message_type == MessageType.BACKWARD:
                     transaction_type = TransactionType[message_data['transaction_type']]
                     transaction_id = message_data['transaction_id']
@@ -61,12 +76,30 @@ async def listener_handler(websocket, path):
                     result = message_data['result']
                     hop_message = BackwardMessage(message_type=MessageType.BACKWARD, transaction_type=transaction_type, transaction_id=transaction_id, hop_id=hop_id,origin_server=origin_server, target_server=target_server, result=result)
                     await priority_queue.put(( client_id, hop_message ))
+                print(f"priority_queue.qsize is {priority_queue.qsize()}")
 
             except json.JSONDecodeError:
                 print("Error parsing JSON")
             
     finally:
         del connected_clients[client_id]
+
+def insert_nexthop_to_priority_queue(transaction_id, hop_id):
+    transaction = history_table.transactions.get(transaction_id)
+    if transaction:
+        hop = transaction.hops.get(hop_id)
+        if hop and hop.status == 'Active':
+            hop_message = HopMessage(MessageType.HOP, transaction.transaction_type, hop)
+            priority_queue.put((1, hop_message))
+        else:
+            print(f"Unable to insert hop: {hop_id} not found or already completed.")
+    else:
+        print(f"Transaction {transaction_id} not found.")
+
+#TODO locking mechanism
+def Acquire_locks(transaction_type):
+    pass
+
 
 
 async def thread_handler(db):
@@ -79,15 +112,22 @@ async def thread_handler(db):
             # print('message_type',message_type,'message', message)
             if message_type == MessageType.BACKWARD: 
                 
-                success = message.result
+                success = message.result #bool
                 print(f"=> Backward Processing info: {message.transaction_type}-hop{message.hop_id }, success = {success }.")
                 
-                #complete the transaction
-                transaction_completed = history_table.complete_transaction(message.transaction_id)
+                #TODO complete_hop -> if is last hop, complete the transaction
+                if success: #if is secend hop, complete the transaction
+                    transaction_completed = history_table.complete_transaction(message.transaction_id)
+                else:
+                    pass
+
+
                 print(f"=> Transaction {message.transaction_type} completed: {transaction_completed}")
                 
-                #TODO retry_count 
-                
+                #TODO push secend hop into priority queue
+
+
+                #TODO                 
                 # retry_count = message.retry_count
                 # if not success and retry_count < MAX_RETRIES:
                 #     print("Resending message.")
@@ -104,6 +144,7 @@ async def thread_handler(db):
 
                 # Process the current hop
                 result = await execute_hop(db, message.transaction_id, message.hop_id)
+
                 
                 # Send a backward message with completion or failure information
                 backward_message = BackwardMessage(message_type=MessageType.BACKWARD, transaction_type=transaction_type, transaction_id=message.transaction_id, hop_id=message.hop_id,origin_server=message.target_server, target_server=message.origin_server, result=result)
@@ -143,6 +184,7 @@ async def thread_handler(db):
         
 
 async def execute_hop(db, transaction_id, hop_id):
+    #TODO if failed(LOCK) reinsert the hop into priority queue, priority +1
     transaction = history_table.transactions.get(transaction_id)
     transaction_type = transaction.transaction_type
     if transaction:

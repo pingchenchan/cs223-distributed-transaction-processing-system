@@ -57,6 +57,7 @@ class WebSocketClient:
             async with websockets.connect(uri) as websocket:
                 await websocket.send(message_json)
                 return await websocket.recv()
+                #TODO received time
         except websockets.ConnectionClosedError as e:
             print(f"Connection closed: {e}")
         except Exception as e:
@@ -101,7 +102,7 @@ class UserMessage(Message):
     def __str__(self):
         return f"UserMessage({self.message_type}, {self.transaction_type}, {self.data})"
 
-class HopMessage(Message):
+class HopMessage(Message): #for priority queue
     def __init__(self, message_type, transaction_type, hop):
         super().__init__(message_type, transaction_type)
         self.hop = hop  
@@ -130,7 +131,7 @@ class BackwardMessage(Message):
         self.result = result  # The result of the operation (True or False)
         self.origin_server = origin_server  # The identifier of the origin server
         self.target_server = target_server  # The identifier of the target server
-        
+
 
 
     def __str__(self):

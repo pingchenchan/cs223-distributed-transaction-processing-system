@@ -13,6 +13,8 @@ class Hop:
         self.status = 'Active'
         self.end_time = None
         self.data = data
+#TODO  which server exe this hop info
+
 
     @property
     def status(self):
@@ -33,7 +35,7 @@ class Transaction:
         self.status = 'Active'
         self.start_time = datetime.now()
         self.end_time = None
-        self.hops = {}
+        self.hops = {} #{1: Hop, 2: Hop, ...}
         self.total_hops = total_hops
         self.last_completed_hop = 0
 
@@ -51,7 +53,6 @@ class HistoryTable:
     def __init__(self):
         if not self._is_initialized:
             self.transactions = {}
-            self.current_transaction_id = 0
             self._is_initialized = True
 
 
