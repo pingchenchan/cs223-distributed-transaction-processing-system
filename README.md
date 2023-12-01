@@ -16,7 +16,8 @@ python3 app.py
 
 
 ### Questiom
-- After sending forward message, should we await reply messaage or not? (I consider not.)
+### Question
+- ~~After sending forward message, should we await reply message or not? ~~(No, don't block the main thread)
 
 
 ### Error handle

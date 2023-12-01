@@ -37,6 +37,16 @@ def message_to_json(message):
             'target_server' : message.target_server ,
             'data' : message.data
         })
+    elif message.message_type == MessageType.BACKWARD:
+        return json.dumps({
+            'message_type': message.message_type.name,
+            'transaction_type': message.transaction_type.name,
+            'transaction_id' : message.transaction_id,  # The ID of the transaction
+            'hop_id' : message.hop_id  ,
+            'result' : message.result  , # The result of the operation (True or False)
+            'origin_server' : message.origin_server , # The identifier of the origin server
+            'target_server' : message.target_server  # The identifier of the target server
+        })
 
 
 class WebSocketClient:
@@ -113,17 +123,18 @@ class ForwardMessage(Message):
 
 
 class BackwardMessage(Message):
-    def __init__(self, message_type, transaction_type, target_server, transaction_id, result, forward_message_id, origin_server,data):
+    def __init__(self, message_type, transaction_type, transaction_id,hop_id, result, origin_server, target_server):
         super().__init__(message_type, transaction_type)
         self.transaction_id = transaction_id  # The ID of the transaction
+        self.hop_id = hop_id
         self.result = result  # The result of the operation (True or False)
-        self.forward_message_id = forward_message_id  # The ID of the corresponding forward message
         self.origin_server = origin_server  # The identifier of the origin server
         self.target_server = target_server  # The identifier of the target server
-        self.data = data
+        
+
 
     def __str__(self):
-        return f"BackwardMessage({self.message_type}, {self.transaction_id}, {self.result})"
+        return f"BackwardMessage({self.message_type}, {self.transaction_id},{self.hop_id} ,{self.result})"
 
 async def send_message(message, uri):
     reply = await WebSocketClient.send_message(message, uri)

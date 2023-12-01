@@ -52,6 +52,15 @@ async def listener_handler(websocket, path):
                     # The client doesn't use await so it doesn't need to send messages back to the client.
                     await priority_queue.put(( client_id, hop_message ))  # 1 is the priority
                 # print(f"priority_queue.qsize is {priority_queue.qsize()}")
+                elif message_type == MessageType.BACKWARD:
+                    transaction_type = TransactionType[message_data['transaction_type']]
+                    transaction_id = message_data['transaction_id']
+                    hop_id = message_data['hop_id']
+                    origin_server = message_data['origin_server']
+                    target_server = message_data['target_server']
+                    result = message_data['result']
+                    hop_message = BackwardMessage(message_type=MessageType.BACKWARD, transaction_type=transaction_type, transaction_id=transaction_id, hop_id=hop_id,origin_server=origin_server, target_server=target_server, result=result)
+                    await priority_queue.put(( client_id, hop_message ))
 
             except json.JSONDecodeError:
                 print("Error parsing JSON")
@@ -68,23 +77,37 @@ async def thread_handler(db):
         message_type = message.message_type
         try:
             # print('message_type',message_type,'message', message)
-            if message_type == MessageType.BACKWARD: #TODO
-                success = message.get('success', False)
-                retry_count = message.get('retry_count', 0)
+            if message_type == MessageType.BACKWARD: 
+                
+                success = message.result
+                print(f"=> Backward Processing info: {message.transaction_type}-hop{message.hop_id }, success = {success }.")
+                #TODO retry_count = message.retry_count
 
-                if not success and retry_count < MAX_RETRIES:
-                    print("Resending message.")
-                    message['retry_count'] = retry_count + 1
-                    await priority_queue.put((1, message))  # Requeue with the same priority
-                else:
-                    print("Handling successful backward message.")
+                # if not success and retry_count < MAX_RETRIES:
+                #     print("Resending message.")
+                #     message['retry_count'] = retry_count + 1
+                #     await priority_queue.put((1, message))  # Requeue with the same priority
+                # else:
+                #     print("Handling successful backward message.")
                     
-                    # Process completed hop and update the history table
-                    # Additional logic for processing the message goes here
+                # Process completed hop and update the history table
+                # Additional logic for processing the message goes here
 
-            elif message_type == MessageType.FORWARD: #TODO
+            elif message_type == MessageType.FORWARD: 
                 print(f"=> Forward Processing info: {message.transaction_type}-hop{message.hop_id }message.")
-                await execute_hop(db, message.transaction_id, message.hop_id)
+                result = await execute_hop(db, message.transaction_id, message.hop_id)
+                
+                # print('Forward message result: ', result)
+                # Send a backward message with completion or failure information
+                backward_message = BackwardMessage(message_type=MessageType.BACKWARD, transaction_type=transaction_type, transaction_id=message.transaction_id, hop_id=message.hop_id,origin_server=message.target_server, target_server=message.origin_server, result=result)
+                asyncio.create_task(send_message(backward_message, f"ws://localhost:{message.origin_server}")) 
+                #creat a task to async send message to order server, in order to not block the main thread
+
+
+                #TODO send backward message to the origin server
+
+
+
                 # Process the current hop
                 # Send a backward message with completion or failure information
 
@@ -95,7 +118,7 @@ async def thread_handler(db):
 
     
             elif message_type == MessageType.HOP: 
-                #TODO Forwatd message to other servers & Locking logic
+                #TODO  Locking logic
                 #Forwards the message to the orders server
                 if transaction_type in [ TransactionType.T3, TransactionType.T4] and message.hop.hop_id ==2:
                     forward_message = ForwardMessage( message_type=MessageType.FORWARD, transaction_type=transaction_type, target_server=ORDER_SERVER_PORT, transaction_id=message.hop.transaction_id, hop_id=message.hop.hop_id, origin_server=SERVER_PORT, data=message.hop.data)
