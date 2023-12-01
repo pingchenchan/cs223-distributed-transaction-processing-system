@@ -1,5 +1,7 @@
 from enum import Enum, auto
 import time
+import json
+import websockets
 # Message class
 # 1. User message: from command line, execute transaction
 # 2. Detailed message: for detailed message
@@ -18,12 +20,45 @@ class TransactionType(Enum):
     T6 = auto()
     T7 = auto()
 
+def message_to_json(message):
+    if  message.message_type == MessageType.USER:
+        return json.dumps({
+            'message_type': message.message_type.name,
+            'transaction_type': message.transaction_type.name,
+            'data': message.data
+        })
+    elif message.message_type == MessageType.FORWARD:
+        return json.dumps({
+            'message_type': message.message_type.name,
+            'transaction_type': message.transaction_type.name,
+            'transaction_id' : message.transaction_id,  # The ID of the transaction
+            'hop_id' : message.hop_id  ,
+            'origin_server' : message.origin_server , 
+            'target_server' : message.target_server ,
+            'data' : message.data
+        })
+
+
+class WebSocketClient:
+    @staticmethod
+    async def send_message(message, uri):
+        message_json = message_to_json(message)
+        try:
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(message_json)
+                return await websocket.recv()
+        except websockets.ConnectionClosedError as e:
+            print(f"Connection closed: {e}")
+        except Exception as e:
+            print(f"Error sending message: {e}")
+
 class Message:
     def __lt__(self, other):
         # This is critical for the priority queue to work properly
-        # The priority queue will pop the smallest item first
+        # higher priority will be popped first
+        # if the priority is the same, the older message will be popped first
         if self.priority != other.priority:
-            return self.priority > other.priority # higher priority will be popped first
+            return self.priority > other.priority 
         return self.created_at < other.created_at
     def __init__(self, message_type, transaction_type):
         self.created_at = time.time()  # The time when the message was created
@@ -57,36 +92,39 @@ class UserMessage(Message):
         return f"UserMessage({self.message_type}, {self.transaction_type}, {self.data})"
 
 class HopMessage(Message):
-    def __init__(self, message_type, transaction_type, data):
+    def __init__(self, message_type, transaction_type, hop):
         super().__init__(message_type, transaction_type)
-        self.data = data  # Additional data for the UserMessage
+        self.hop = hop  
 
     def __str__(self):
-        return f"HopMessage({self.message_type}, {self.transaction_type}, {self.data})"
+        return f"HopMessage({self.message_type}, {self.transaction_type}, {self.hop})"
 
 class ForwardMessage(Message):
-    def __init__(self, message_type, transaction_type, target_server, transaction_id, hop_id, action, table_name, data, origin_server):
-        super().__init__(message_type, transaction_type, target_server)
-        self.transaction_id = transaction_id  # The ID of the transaction
-        self.hop_id = hop_id  # The ID of the hop
-        self.action = action  # The action to be performed
-        self.table_name = table_name  # The name of the table involved
-        self.data = data  # Additional data for the ForwardMessage
-        self.origin_server = origin_server  # The identifier of the origin server
-        self.target_server = target_server  # The identifier of the target server
+    def __init__(self, message_type, transaction_type, target_server, transaction_id, hop_id, origin_server,data):
+        super().__init__(message_type, transaction_type)
+        self.transaction_id = transaction_id  
+        self.hop_id = hop_id  
+        self.origin_server = origin_server  
+        self.target_server = target_server 
+        self.data = data
 
     def __str__(self):
-        return f"ForwardMessage({self.message_type}, {self.transaction_id}, {self.hop_id}, {self.action}, {self.table_name}, {self.data})"
+        return f"ForwardMessage({self.message_type}, {self.transaction_id}, {self.hop_id})"
 
 
 class BackwardMessage(Message):
-    def __init__(self, message_type, transaction_type, target_server, transaction_id, result, forward_message_id, origin_server):
-        super().__init__(message_type, transaction_type, target_server)
+    def __init__(self, message_type, transaction_type, target_server, transaction_id, result, forward_message_id, origin_server,data):
+        super().__init__(message_type, transaction_type)
         self.transaction_id = transaction_id  # The ID of the transaction
         self.result = result  # The result of the operation (True or False)
         self.forward_message_id = forward_message_id  # The ID of the corresponding forward message
         self.origin_server = origin_server  # The identifier of the origin server
         self.target_server = target_server  # The identifier of the target server
+        self.data = data
 
     def __str__(self):
         return f"BackwardMessage({self.message_type}, {self.transaction_id}, {self.result})"
+
+async def send_message(message, uri):
+    reply = await WebSocketClient.send_message(message, uri)
+    return reply

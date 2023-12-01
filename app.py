@@ -13,10 +13,12 @@ history_table = HistoryTable()
 priority_queue = asyncio.PriorityQueue()
 # Maximum number of retries for failed messages
 MAX_RETRIES = 3
- # Dictionary to keep track of connected clients
-connected_clients = {}  
+ # Dictionary to keep track of connected clients, {client_id: websocket}
+connected_clients = {} 
 calculate_total_hops = lambda transaction_type: 1 if transaction_type in [TransactionType.T1, TransactionType.T2, TransactionType.T5, TransactionType.T6, TransactionType.T7] else 2
 
+SERVER_PORT = 8898
+ORDER_SERVER_PORT = 8898
 
 async def listener_handler(websocket, path):
     client_id = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
@@ -26,17 +28,31 @@ async def listener_handler(websocket, path):
             # print(f"Received from {client_id}: '{message}'")
             try:
                 message_data = json.loads(message)
-                message_type = message_data['message_type']
-                transaction_type = TransactionType[message_data['transaction_type']]
-                total_hops = calculate_total_hops(transaction_type)
-                transaction_id = history_table.add_transaction(transaction_type, total_hops)
-                hops = history_table.generate_corresponding_hop(transaction_id, message_data['data'])
-                print('total_hops: ', total_hops  )
-                for hop_id in range(1, total_hops+1): #hop index starts from 1
-                    print('hop_id: ', hop_id)
-                    hop_message = HopMessage(MessageType.HOP, transaction_type, hops[hop_id])
+                message_type = MessageType[message_data['message_type']]
+                if message_type == MessageType.USER:
+                    transaction_type = TransactionType[message_data['transaction_type']]
+                    total_hops = calculate_total_hops(transaction_type)
+                    transaction_id = history_table.add_transaction(transaction_type, total_hops)
+                    hops = history_table.generate_corresponding_hop(transaction_id, message_data['data'])
+                    for hop_id in range(1, total_hops+1): #hop index starts from 1
+                        hop_message = HopMessage(MessageType.HOP, transaction_type, hops[hop_id])
+                        await priority_queue.put(( client_id, hop_message ))
+                    await connected_clients[client_id].send(f"successful sent to server" )
+        
+                elif message_type == MessageType.FORWARD:
+                    transaction_type = TransactionType[message_data['transaction_type']]
+                    transaction_id = message_data['transaction_id']
+                    hop_id = message_data['hop_id']
+                    origin_server = message_data['origin_server']
+                    target_server = message_data['target_server']
+                    data = message_data['data']
+                    hop_message = ForwardMessage(message_type=MessageType.FORWARD, transaction_type=transaction_type, target_server=target_server, transaction_id=transaction_id, hop_id=hop_id, origin_server=origin_server, data=data)
+                    print('=> The forward info: server successful receive forward message')
+                    # await connected_clients[client_id].send('successful receive forward process message)
+                    # The client doesn't use await so it doesn't need to send messages back to the client.
                     await priority_queue.put(( client_id, hop_message ))  # 1 is the priority
-                    print('priority_queue.qsize',priority_queue.qsize())
+                # print(f"priority_queue.qsize is {priority_queue.qsize()}")
+
             except json.JSONDecodeError:
                 print("Error parsing JSON")
             
@@ -51,8 +67,8 @@ async def thread_handler(db):
         transaction_type = message.transaction_type
         message_type = message.message_type
         try:
-            print(f"priority_queue Processing item: '{message}'")
-            if message_type == MessageType.BACKWARD:
+            # print('message_type',message_type,'message', message)
+            if message_type == MessageType.BACKWARD: #TODO
                 success = message.get('success', False)
                 retry_count = message.get('retry_count', 0)
 
@@ -66,29 +82,35 @@ async def thread_handler(db):
                     # Process completed hop and update the history table
                     # Additional logic for processing the message goes here
 
-            elif message_type == MessageType.FORWARD:
-                print("Processing forward message.")
+            elif message_type == MessageType.FORWARD: #TODO
+                print(f"=> Forward Processing info: {message.transaction_type}-hop{message.hop_id }message.")
+                await execute_hop(db, message.transaction_id, message.hop_id)
                 # Process the current hop
                 # Send a backward message with completion or failure information
 
             elif message_type == MessageType.USER :
-                print("Processing user message.")
-                # Handle new or in-progress transactions
-                # Send a forward message to the next hop
-                
-                print("Processing transaction.")
-                # Transaction processing logic goes here
-    
-            elif message_type == MessageType.HOP:
-                await execute_hop(db, message.data.transaction_id, message.data.hop_id)
-                print("Processing hop message.")
-                # Execute the hop
-                # Send a forward message to the next hop
+                pass
+                # Can delete this part, every user message will be transformed to hop message 
+                # and put into priority queue by listener_handler function
 
-            if client_id in connected_clients:
-                await connected_clients[client_id].send(f"Handling successful backward message and priority_queue.qsize is {priority_queue.qsize()}" )
+    
+            elif message_type == MessageType.HOP: 
+                #TODO Forwatd message to other servers & Locking logic
+                #Forwards the message to the orders server
+                if transaction_type in [ TransactionType.T3, TransactionType.T4] and message.hop.hop_id ==2:
+                    forward_message = ForwardMessage( message_type=MessageType.FORWARD, transaction_type=transaction_type, target_server=ORDER_SERVER_PORT, transaction_id=message.hop.transaction_id, hop_id=message.hop.hop_id, origin_server=SERVER_PORT, data=message.hop.data)
+                    asyncio.create_task(send_message(forward_message, f"ws://localhost:{ORDER_SERVER_PORT}")) 
+                    #creat a task to async send message to order server, in order to not block the main thread
+                
+                    # reply = await send_message(forward_message, f"ws://localhost:{ORDER_SERVER_PORT }")
+                    # do not need to wait for the reply
+                    # print(f"=> The forward reply is: '{reply}'")
+                else:
+                    await execute_hop(db, message.hop.transaction_id, message.hop.hop_id)
+                    
+                    print(f"=> HOP Processing info: {message.transaction_type}-hop{message.hop.hop_id }")
+
         finally:
-            print('priority_queue.task_done()')
             priority_queue.task_done()
         
 
@@ -103,17 +125,19 @@ async def execute_hop(db, transaction_id, hop_id):
             if transaction_type == TransactionType.T1:
                 result = transaction_1(db, hop.data['name'], hop.data['email'], hop.data['address'])
                 row_count = get_row_count(db, 'Customers')
-                print(f"Number of rows in Customers: {row_count}")
+                # print(f"Number of rows in Customers: {row_count}")
             elif transaction_type== TransactionType.T2:
                 result = transaction_2(db, hop.data['model_name'], hop.data['resolution'], hop.data['lens_type'], hop.data['price'])
                 row_count = get_row_count(db, 'Cameras')
-                print(f"Number of rows in Cameras: {row_count}")
+                # print(f"Number of rows in Cameras: {row_count}")
             
             elif transaction_type == TransactionType.T3:
                 if hop_id == 1:
                     result = transaction_3_hop1(db, hop.data['customer_id'])
+                    # print('|| transaction_3_hop1 result: ', result)
                 elif hop_id == 2:
                     result = transaction_3_hop2(db, hop.data['customer_id'], hop.data['quantity'])
+                    # print('|| transaction_3_hop2 result: ', result)
             elif transaction_type == TransactionType.T4:
                 if hop_id == 1:
                     result = transaction_4_hop1(db, hop.data['camera_id'])
@@ -126,7 +150,7 @@ async def execute_hop(db, transaction_id, hop_id):
             elif transaction_type == TransactionType.T7:
                 result = transaction_7(db, hop.data['order_id'])
             if result:
-                print('transaction_type: ', transaction_type, 'hop_id: ', hop_id, 'result: ', result)
+                # print('transaction_type: ', transaction_type, 'hop_id: ', hop_id, 'result: ', result)
                 history_table.complete_transaction_hop(hop)
                 if hop_id == transaction.total_hops:
                     history_table.complete_transaction(transaction_id)
@@ -144,9 +168,9 @@ async def main():
     db = Database('shop.db')
     # Start the server, handler and client
 
-    server_task = websockets.serve(listener_handler, 'localhost', 8898)
+    server_task = websockets.serve(listener_handler, 'localhost', SERVER_PORT )
     handler_task = asyncio.create_task(thread_handler(db))
-    client_task = asyncio.create_task(send_testing_message('ws://localhost:8898'))
+    client_task = asyncio.create_task(send_testing_message(f"ws://localhost:{SERVER_PORT}"))
 
 
     #concurently run the server, handler and client

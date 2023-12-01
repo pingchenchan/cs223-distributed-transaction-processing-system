@@ -15,6 +15,10 @@ python3 app.py
 ### TODO
 
 
+### Questiom
+- After sending forward message, should we await reply messaage or not? (I consider not.)
+
+
 ### Error handle
 
 

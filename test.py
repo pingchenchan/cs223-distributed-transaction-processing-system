@@ -4,14 +4,10 @@ import random
 import asyncio
 import websockets
 import time
+from message import *
 
 
-def message_to_json(message):
-    return json.dumps({
-        'message_type': message.message_type.name,
-        'transaction_type': message.transaction_type.name,
-        'data': message.data
-    })
+
 
 def generate_transaction_data(transaction_type):
     if transaction_type == TransactionType.T1:
@@ -44,8 +40,8 @@ def generate_transaction_data(transaction_type):
 
 async def send_testing_message(uri):
     for i in range(20):
-        sleep_for = random.uniform(0.3, 1.0)
-        await asyncio.sleep(sleep_for)
+        # sleep_for = random.uniform(0.3, 1.0)
+        # await asyncio.sleep(sleep_for)
 
         # randomly choose a transaction type
         # transaction_type = random.choice([TransactionType.T1, TransactionType.T2,  TransactionType.T5, TransactionType.T6, TransactionType.T7])
@@ -57,11 +53,6 @@ async def send_testing_message(uri):
         message = UserMessage(MessageType.USER, transaction_type, data)
 
         # transform the message to JSON
-        message_json = message_to_json(message)
-
-        async with websockets.connect(uri) as websocket:
-            await websocket.send(message_json)
-            # print(f"Sent: '{i}'")
-            reply = await websocket.recv()
-            # print(f"The reply is: '{reply}'")
+        reply = await WebSocketClient.send_message(message, uri)
+        print(f"=> The client info: idx-{i} msg has {reply}")
        
