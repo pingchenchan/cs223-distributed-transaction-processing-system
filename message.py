@@ -1,4 +1,5 @@
 from enum import Enum, auto
+import time
 # Message class
 # 1. User message: from command line, execute transaction
 # 2. Detailed message: for detailed message
@@ -18,7 +19,15 @@ class TransactionType(Enum):
     T7 = auto()
 
 class Message:
+    def __lt__(self, other):
+        # This is critical for the priority queue to work properly
+        # The priority queue will pop the smallest item first
+        if self.priority != other.priority:
+            return self.priority > other.priority # higher priority will be popped first
+        return self.created_at < other.created_at
     def __init__(self, message_type, transaction_type):
+        self.created_at = time.time()  # The time when the message was created
+        self.priority = 0  # The priority of the message
         # The type of the message (e.g., 'User', 'Forward', 'Backward')
         if isinstance(message_type, MessageType):
             self.message_type = message_type

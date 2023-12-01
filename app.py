@@ -31,10 +31,12 @@ async def listener_handler(websocket, path):
                 total_hops = calculate_total_hops(transaction_type)
                 transaction_id = history_table.add_transaction(transaction_type, total_hops)
                 hops = history_table.generate_corresponding_hop(transaction_id, message_data['data'])
+                print('total_hops: ', total_hops  )
                 for hop_id in range(1, total_hops+1): #hop index starts from 1
+                    print('hop_id: ', hop_id)
                     hop_message = HopMessage(MessageType.HOP, transaction_type, hops[hop_id])
-                    await priority_queue.put((1, client_id, hop_message ))  # 1 is the priority
-                
+                    await priority_queue.put(( client_id, hop_message ))  # 1 is the priority
+                    print('priority_queue.qsize',priority_queue.qsize())
             except json.JSONDecodeError:
                 print("Error parsing JSON")
             
@@ -45,11 +47,11 @@ async def listener_handler(websocket, path):
 async def thread_handler(db):
     while True:
         # Wait until an item is available, asynchronously
-        _, client_id , message  = await priority_queue.get()
+        client_id , message  = await priority_queue.get()
         transaction_type = message.transaction_type
         message_type = message.message_type
         try:
-            # print(f"priority_queue Processing item: '{message}'")
+            print(f"priority_queue Processing item: '{message}'")
             if message_type == MessageType.BACKWARD:
                 success = message.get('success', False)
                 retry_count = message.get('retry_count', 0)
@@ -78,7 +80,7 @@ async def thread_handler(db):
                 # Transaction processing logic goes here
     
             elif message_type == MessageType.HOP:
-                execute_hop(db, message.data.transaction_id, message.data.hop_id)
+                await execute_hop(db, message.data.transaction_id, message.data.hop_id)
                 print("Processing hop message.")
                 # Execute the hop
                 # Send a forward message to the next hop
@@ -86,10 +88,11 @@ async def thread_handler(db):
             if client_id in connected_clients:
                 await connected_clients[client_id].send(f"Handling successful backward message and priority_queue.qsize is {priority_queue.qsize()}" )
         finally:
+            print('priority_queue.task_done()')
             priority_queue.task_done()
         
 
-def execute_hop(db, transaction_id, hop_id):
+async def execute_hop(db, transaction_id, hop_id):
     transaction = history_table.transactions.get(transaction_id)
     transaction_type = transaction.transaction_type
     if transaction:
