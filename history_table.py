@@ -15,7 +15,7 @@ class Hop:
         self.start_time = datetime.now()
         self.end_time = None
         self.data = data
-        self.websocket_tracker = TimeTracker() # [(send_timestep, receive_timestep), ...] #TODO  transmission time
+        self.websocket_tracker = TimeTracker() # [(send_timestep, receive_timestep), ...] 
         self.queue_tracker = TimeTracker() 
         self.server_exe = None #TODO  which server exe this hop info
     @property

@@ -48,9 +48,9 @@ async def send_testing_message(uri):
 
         '''Choose transaction types, feel free to change it '''
         # transaction_type = random.choice([TransactionType.T1, TransactionType.T2,  TransactionType.T5, TransactionType.T6, TransactionType.T7])
-        transaction_type = random.choice([TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7])
+        # transaction_type = random.choice([TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7])
         # transaction_type = random.choice([TransactionType.T3, TransactionType.T4])
-        # transaction_type = random.choice([ TransactionType.T7])
+        transaction_type = random.choice([ TransactionType.T3])
         
 
         data = generate_transaction_data(transaction_type)

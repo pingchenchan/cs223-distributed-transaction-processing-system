@@ -16,9 +16,8 @@ python3 app.py
 ### TODO
 
 
-### Questiom
+
 ### Question
-- ~~After sending forward message, should we await reply message or not? ~~(No, don't block the main thread)
 
 
 ### Error handle

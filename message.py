@@ -103,7 +103,6 @@ def message_to_json(message):
             'data' : message.data,
             'websocket_receive_time' : message.websocket_receive_time.strftime("%Y-%m-%d %H:%M:%S.%f") if message.websocket_receive_time else None,
             'queue_tracker' : queue_tracker_data, # [(start_queue_trackertep, exit_queue_timestep), ...]
-             #TODO  queue wait time
 
         })
     elif message.message_type == MessageType.BACKWARD:
@@ -119,7 +118,6 @@ def message_to_json(message):
             'websocket_send_time': message.websocket_send_time.strftime("%Y-%m-%d %H:%M:%S.%f") if message.websocket_send_time else None,
             'queue_tracker': queue_tracker_data,
             'server_exe': message.server_exe,
-            #TODO  queue wait time
             #TODO  which server exe this hop info
         })
 
@@ -210,8 +208,8 @@ class ForwardMessage(Message):
         self.data = data
 
         '''POV of target server'''
-        self.websocket_receive_time = websocket_receive_time #TODO  websocket receive time
-        # self.websocket_send_time = None #TODO  websocket send time
+        self.websocket_receive_time = websocket_receive_time 
+
 
 
 
@@ -229,8 +227,8 @@ class BackwardMessage(Message):
         self.origin_server = origin_server  # The identifier of the origin server
         self.target_server = target_server  # The identifier of the target server
         '''POV of target server'''
-        self.websocket_receive_time = websocket_receive_time #TODO  websocket receive time
-        self.websocket_send_time = websocket_send_time  #TODO  websocket send time
+        self.websocket_receive_time = websocket_receive_time 
+        self.websocket_send_time = websocket_send_time 
         self.server_exe = None #TODO  which server exe this hop info
 
 
