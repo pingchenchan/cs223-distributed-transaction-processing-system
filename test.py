@@ -42,15 +42,15 @@ def generate_transaction_data(transaction_type):
 async def send_testing_message(uri):
     messages = [] 
     start_time = time.time()
-    for i in range(30):
+    for i in range(1000):
         # sleep_for = random.uniform(0.0001, 0.001)
         # await asyncio.sleep(sleep_for)
 
         '''Choose transaction types, feel free to change it '''
         # transaction_type = random.choice([TransactionType.T1, TransactionType.T2,  TransactionType.T5, TransactionType.T6, TransactionType.T7])
-        # transaction_type = random.choice([TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7])
+        transaction_type = random.choice([TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7])
         # transaction_type = random.choice([TransactionType.T3, TransactionType.T4])
-        transaction_type = random.choice([ TransactionType.T3])
+        # transaction_type = random.choice([ TransactionType.T3])
         
 
         data = generate_transaction_data(transaction_type)
