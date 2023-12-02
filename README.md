@@ -10,7 +10,8 @@ pip install -r requirements.txt
 python3 app.py
 ```
 
-
+### IDEA
+- Study how to choose the best priority for each hop type.
 
 ### TODO
 

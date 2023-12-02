@@ -42,7 +42,7 @@ def generate_transaction_data(transaction_type):
 async def send_testing_message(uri):
     messages = [] 
     start_time = time.time()
-    for i in range(100):
+    for i in range(3000):
         # sleep_for = random.uniform(0.0001, 0.001)
         # await asyncio.sleep(sleep_for)
 
@@ -50,10 +50,12 @@ async def send_testing_message(uri):
         # transaction_type = random.choice([TransactionType.T1, TransactionType.T2,  TransactionType.T5, TransactionType.T6, TransactionType.T7])
         transaction_type = random.choice([TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7])
         # transaction_type = random.choice([TransactionType.T3, TransactionType.T4])
+        # transaction_type = random.choice([ TransactionType.T7])
         
 
         data = generate_transaction_data(transaction_type)
         message = UserMessage(MessageType.USER, transaction_type, data)
+
 
 
         '''method 1: send batch messages by using WebSocketClientForBatchMessage()'''
@@ -80,9 +82,15 @@ async def send_testing_message(uri):
     print(f"Reply received in {elapsed_time:.2f} seconds: {reply}")
 
     '''write transaction log to history table'''
+    # await asyncio.sleep(3)
     history_table = HistoryTable()
     history_table.write_transaction_log(each_transaction=False)
     print(f"wrote transaction log ")
+
+    # g = 0
+    # for i in history_table.transactions:
+    #     g =i
+    # print(history_table.transactions[i].hops[1].queue_tracker)
 
         
 

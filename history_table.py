@@ -15,9 +15,9 @@ class Hop:
         self.start_time = datetime.now()
         self.end_time = None
         self.data = data
-#TODO  which server exe this hop info
-
-
+        self.websocket_tracker = TimeTracker() # [(send_timestep, receive_timestep), ...] #TODO  transmission time
+        self.queue_tracker = TimeTracker() 
+        self.server_exe = None #TODO  which server exe this hop info
     @property
     def status(self):
         return self._status
@@ -28,6 +28,40 @@ class Hop:
             self._status = value
         else:
             raise ValueError(f"Status must be one of {self.VALID_STATUSES}, not '{value}'")
+
+    # Methods specific to websocket transmission
+    def start_websocket_transmission(self,timestamp=None):
+        self.websocket_tracker.start_event(timestamp)
+
+    def end_websocket_transmission(self,timestamp=None):
+        self.websocket_tracker.end_event(timestamp)
+
+    # Methods specific to queue wait time
+    def start_queue_wait(self,timestamp=None):
+        self.queue_tracker.start_event(timestamp)
+
+    def end_queue_wait(self,timestamp=None):
+        self.queue_tracker.end_event(timestamp)
+
+    def concat_queue_wait(self, other):
+        self.queue_tracker.concat(other)
+
+    # Aggregate data access methods
+    def get_total_websocket_transmission_time(self):
+        return self.websocket_tracker.get_total_time()
+
+    def get_total_queue_wait_time(self):
+        return self.queue_tracker.get_total_time()
+
+    def get_websocket_transmission_count(self):
+        return self.websocket_tracker.get_event_count()
+
+    def get_queue_wait_count(self):
+        return self.queue_tracker.get_event_count()
+
+
+
+
 
 
 class Transaction:
@@ -68,7 +102,7 @@ class HistoryTable:
     def generate_corresponding_hop(self, transaction_id, data)-> Hop:
         transaction_type = self.transactions.get(transaction_id).transaction_type
         if transaction_type in [transaction_type.T1, transaction_type.T2, transaction_type.T5, transaction_type.T6, transaction_type.T7]:
-            self.transactions[transaction_id].hops[1] = Hop(transaction_id=transaction_id, hop_id=1, data=data) #hop_id starts from 1
+            self.transactions[transaction_id].hops[1] = Hop(transaction_id=transaction_id, hop_id=1, data=data) #hop_id start from 1
         if transaction_type in [transaction_type.T3, transaction_type.T4]:
             self.transactions[transaction_id].hops[1] = Hop(transaction_id=transaction_id, hop_id=1, data=data)
             self.transactions[transaction_id].hops[2] = Hop(transaction_id=transaction_id, hop_id=2, data=data)
@@ -106,10 +140,6 @@ class HistoryTable:
             print(f"Transaction {transaction_id} not found.")
 
 
-  
-
-    
-
 
     def write_transaction_log(self, each_transaction=True):
         """Write the transaction log to a file."""
@@ -121,8 +151,15 @@ class HistoryTable:
         first_hop_count_by_type = defaultdict(int) 
         second_hop_count_by_type = defaultdict(int)
 
-        total_latency_by_type = defaultdict(float)  # Save the total latency for each type of transaction
-        count_by_type = defaultdict(int)  # Save the count for each type of transaction
+        total_latency_by_type = defaultdict(float)
+        count_by_type = defaultdict(int)
+
+        queue_wait_time_by_hop = defaultdict(lambda: defaultdict(int))
+        websocket_transmission_time_by_hop = defaultdict(lambda: defaultdict(int))
+        queue_wait_count_by_hop = defaultdict(lambda: defaultdict(int))
+        queue_wait_count_by_hop_2 = defaultdict(lambda: defaultdict(int))
+        websocket_transmission_count_by_hop = defaultdict(lambda: defaultdict(int))
+        websocket_transmission_count_by_hop_2 = defaultdict(lambda: defaultdict(int))
 
         with open('transaction_log.txt', 'w') as f:
             if each_transaction:
@@ -137,42 +174,52 @@ class HistoryTable:
                     total_transactions += 1
                     total_latency_by_type[transaction.transaction_type] += transaction_latency
                     count_by_type[transaction.transaction_type] += 1
+
                 if each_transaction:
                     f.write(f"Transaction ID: {transaction_id}\n")
-                    # f.write(f"    Start Time: {transaction.start_time.strftime('%H:%M:%S.%f')}, End Time: {transaction.end_time.strftime('%H:%M:%S.%f') if transaction.end_time else 'Not finished'}, Latency (us): {transaction_latency}\n")
                     f.write(f"    Transaction Type: {transaction.transaction_type.name}, Latency (us): {transaction_latency}\n")
-                for hop in transaction.hops.values():
+
+                for hop_id, hop in transaction.hops.items():
                     hop_latency = "Not finished"
                     if hop.end_time:
                         hop_latency = (hop.end_time - hop.start_time).total_seconds() * 1000000
-                        # if hop.hop_id in [1, 2] and transaction.transaction_type in [TransactionType.T3, TransactionType.T4]:
                         if hop.hop_id == 1:
                             total_first_hop_latency_by_type[transaction.transaction_type] += hop_latency
                             first_hop_count_by_type[transaction.transaction_type] += 1
                         elif hop.hop_id == 2:
                             total_second_hop_latency_by_type[transaction.transaction_type] += hop_latency
                             second_hop_count_by_type[transaction.transaction_type] += 1
-                    # f.write(f"    Hop ID: {hop.hop_id}, Start Time: {hop.start_time.strftime('%H:%M:%S.%f')}, End Time: {hop.end_time.strftime('%H:%M:%S.%f') if hop.end_time else 'Not finished'}, Latency (us): {hop_latency}\n")
-                    # f.write(f"    Hop ID: {hop.hop_id}, Latency (us): {hop_latency}\n")
 
-            # Calculate and write average latencies
+                    queue_wait_time_by_hop[transaction.transaction_type][hop_id] += hop.get_total_queue_wait_time()
+                    websocket_transmission_time_by_hop[transaction.transaction_type][hop_id] += hop.get_total_websocket_transmission_time()
+                    queue_wait_count_by_hop[transaction.transaction_type][hop_id] += hop.get_queue_wait_count()
+                    queue_wait_count_by_hop_2[transaction.transaction_type][hop_id] += 1
+                    websocket_transmission_count_by_hop[transaction.transaction_type][hop_id] += hop.get_websocket_transmission_count()
+                    websocket_transmission_count_by_hop_2[transaction.transaction_type][hop_id] += 1
+
             f.write("\nOverall Summary\n")
             f.write("---------------\n")
             avg_transaction_latency = total_latency / total_transactions if total_transactions > 0 else 0
             f.write(f"Average Transaction Latency: {avg_transaction_latency:.2f} microseconds\n\n")
-            
-            f.write("Average Latency by Transaction Type\n")
-            f.write("-----------------------------------\n")
-            for transaction_type in TransactionType:
-                avg_latency = (total_latency_by_type[transaction_type] / count_by_type[transaction_type]) if count_by_type[transaction_type] > 0 else 0
-                f.write(f"{transaction_type.name}: {avg_latency:7.2f} microseconds\n")
 
-            f.write("\nAverage Latency by Hop for Each Transaction Type\n")
-            f.write("------------------------------------------------\n")
+            f.write("Average Latency by Hop for Each Transaction Type\n")
+            f.write("-------------------------------------------------\n")
             for transaction_type in TransactionType:
                 avg_latency = (total_latency_by_type[transaction_type] / count_by_type[transaction_type]) if count_by_type[transaction_type] > 0 else 0
                 avg_first_hop_latency = (total_first_hop_latency_by_type[transaction_type] / first_hop_count_by_type[transaction_type]) if first_hop_count_by_type[transaction_type] > 0 else 0
                 avg_second_hop_latency = (total_second_hop_latency_by_type[transaction_type] / second_hop_count_by_type[transaction_type]) if second_hop_count_by_type[transaction_type] > 0 else 0
-                f.write(f"{transaction_type.name} - Average TTransaction Latency: {avg_latency:7.2f} microseconds, First Hop: {avg_first_hop_latency:7.2f} microseconds, Second Hop: {avg_second_hop_latency:7.2f} microseconds\n")
+                f.write(f"{transaction_type.name} - Average Transaction Latency: {avg_latency:7.2f} microseconds, First Hop: {avg_first_hop_latency:7.2f} microseconds, Second Hop: {avg_second_hop_latency:7.2f} microseconds\n")
+            
 
+
+            f.write("\nStatistics by Transaction Type\n")
+            f.write("-------------------------------\n")
+            for transaction_type in TransactionType:
+                for hop_id in [1, 2]:
+                    avg_queue_wait_time = queue_wait_time_by_hop[transaction_type][hop_id] / queue_wait_count_by_hop_2[transaction_type][hop_id] if queue_wait_count_by_hop_2[transaction_type][hop_id] > 0 else 1
+                    avg_websocket_transmission_time = websocket_transmission_time_by_hop[transaction_type][hop_id] / websocket_transmission_count_by_hop_2[transaction_type][hop_id]/2 if websocket_transmission_count_by_hop_2[transaction_type][hop_id] > 0 else 2
+                    f.write(f"{transaction_type.name} Hop {hop_id} -      Queue Wait: Avg Time: {avg_queue_wait_time:6.2f} microseconds, Avg Count: {queue_wait_count_by_hop[transaction_type][hop_id]/queue_wait_count_by_hop_2[transaction_type][hop_id] if queue_wait_count_by_hop_2[transaction_type][hop_id] > 0 else 1:3.2f}\n")
+                    f.write(f"    WebSocket Transmission: Avg Time: {avg_websocket_transmission_time:6.2f} microseconds, Avg Count: {websocket_transmission_count_by_hop[transaction_type][hop_id]/websocket_transmission_count_by_hop_2[transaction_type][hop_id] if websocket_transmission_count_by_hop_2[transaction_type][hop_id] > 0 else 1:3.2f}\n")
+            
             f.write("\n")
+
