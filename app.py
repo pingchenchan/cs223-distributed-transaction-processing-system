@@ -5,7 +5,12 @@ import json
 from history_table import *
 from message import *
 from test import *
+from lock_manager import *
 
+
+# The two-phase locking protocol variant for concurrency control
+# where Transaction 3-4 can proceed only if Transaction 7 is not in progress, and vice versa.
+lock_manager = LockManager()
 
 history_table = HistoryTable()
 # Priority queue for handling messages
@@ -216,7 +221,6 @@ async def thread_handler(db):
                         )
                     )
 
-                # print(f"=> Transaction {message.transaction_type} completed: {transaction_completed}")
 
                 # If secend hop is not completed, put second hop into priority queue
                 if message.hop_id == 1:
@@ -234,9 +238,11 @@ async def thread_handler(db):
 
                 websocket_receive_time = message.websocket_receive_time
 
-                # Process the current hop
-                await execute_hop(db, message.transaction_id, message.hop_id)
+                # execute_hop() includes Locking mechanism 
+                result = await execute_hop(db, message.transaction_id, message.hop_id)
 
+                
+            
                 # Send a backward message with completion or failure information
                 backward_message = BackwardMessage(
                     message_type=MessageType.BACKWARD,
@@ -275,24 +281,28 @@ async def thread_handler(db):
                             db, message.hop.transaction_id, message.hop.hop_id
                         )
                         if result:
-                            # TODO
+                            # complete the first hop
                             history_table.complete_transaction_hop(
                                 message.hop, CURRENT_SERVER_PORT
                             )
-                            transaction = history_table.transactions.get(
+
+                            # set 2nd hop start time and put into priority queue
+                            history_table.transactions.get(
                                 message.hop.transaction_id
-                            )
-                            transaction.hops[2].start_processing()
+                            ).hops[2].start_processing()
                             await insert_nexthop_to_priority_queue(
                                 message.hop.transaction_id, 2, client_id
                             )
                         else:
+                            history_table.transactions.get(
+                                message.hop.transaction_id
+                            ).hops[1].status = "Failed"   
                             message.priority += 1
                             await priority_queue.put((client_id, message))
 
                     if message.hop.hop_id == 2:
-                        # print('message.hop.hop_id', message.hop.hop_id ,message.priority )
-                        # print('hop2 queue_tracker info before forward sending', message.hop.queue_tracker)
+
+                        # send forward message to order server
                         forward_message = ForwardMessage(
                             message_type=MessageType.FORWARD,
                             transaction_type=transaction_type,
@@ -302,12 +312,10 @@ async def thread_handler(db):
                             origin_server=SERVER_PORT,
                             data=message.hop.data,
                         )
-
-                        # get the current hop info and update the websocket_tracker timestamp
-                        hop = history_table.transactions.get(
+                        # update this hop's websocket_tracker timestamp
+                        history_table.transactions.get(
                             message.hop.transaction_id
-                        ).hops.get(message.hop.hop_id)
-                        hop.start_websocket_transmission()
+                        ).hops.get(message.hop.hop_id).start_websocket_transmission()
 
                         # creat a task to async send message to order server, in order to not block the main thread
                         asyncio.create_task(
@@ -318,14 +326,16 @@ async def thread_handler(db):
 
                 else: # transaction_type in [TransactionType.T1, TransactionType.T2, TransactionType.T5, TransactionType.T6, TransactionType.T7]:
                     # p rocess the current hop
-
+                    
                     result = await execute_hop(
                         db, message.hop.transaction_id, message.hop.hop_id
                     )
-                    history_table.complete_transaction_hop(
-                        message.hop, CURRENT_SERVER_PORT
-                    )
-                    if not result:
+                    if result:
+                        history_table.complete_transaction_hop(
+                            message.hop, CURRENT_SERVER_PORT
+                        )
+                    else:
+                        history_table.transactions.get(message.hop.transaction_id).hops.get(message.hop.hop_id).status = "Failed"
                         message.priority += 1
                         await priority_queue.put((client_id, message))
 
@@ -338,78 +348,74 @@ async def thread_handler(db):
 
 
 async def execute_hop(db, transaction_id, hop_id):
-    # TODO if failed(LOCK) reinsert the hop into priority queue, priority +1
     # TODO add logic handling server which own different table
     transaction = history_table.transactions.get(transaction_id)
-    transaction_type = transaction.transaction_type
-    if transaction:
-        hop = transaction.hops.get(hop_id)
-        if hop and hop.status == "Active":
-
-
-            if transaction_type == TransactionType.T1:
-                result = transaction_1(
-                    db, hop.data["name"], hop.data["email"], hop.data["address"]
-                )
-                row_count = get_row_count(db, "Customers")
-                # print(f"Number of rows in Customers: {row_count}")
-            elif transaction_type == TransactionType.T2:
-                result = transaction_2(
-                    db,
-                    hop.data["model_name"],
-                    hop.data["resolution"],
-                    hop.data["lens_type"],
-                    hop.data["price"],
-                )
-                row_count = get_row_count(db, "Cameras")
-                # print(f"Number of rows in Cameras: {row_count}")
-
-            elif transaction_type == TransactionType.T3:
-                if hop_id == 1:
-                    result = transaction_3_hop1(db, hop.data["customer_id"])
-                    # print('|| transaction_3_hop1 result: ', result)
-                elif hop_id == 2:
-                    result = transaction_3_hop2(
-                        db, hop.data["customer_id"], hop.data["quantity"]
-                    )
-                    # print('|| transaction_3_hop2 result: ', result)
-                    """FOR TESTING PURPOSES ONLY"""
-                    # if random.randint(1, 10) >2:  # There's a 1 in 10 chance that this condition will be True
-                    #     result = False
-                    # else:
-                    #     result =  transaction_3_hop2(db, hop.data['customer_id'], hop.data['quantity'])
-            elif transaction_type == TransactionType.T4:
-                if hop_id == 1:
-                    result = transaction_4_hop1(db, hop.data["camera_id"])
-                elif hop_id == 2:
-                    result = transaction_4_hop2(
-                        db, hop.data["camera_id"], hop.data["quantity"]
-                    )
-            elif transaction_type == TransactionType.T5:
-                result = transaction_5(db, hop.data["customer_id"])
-            elif transaction_type == TransactionType.T6:
-                result = transaction_6(db, hop.data["camera_id"])
-            elif transaction_type == TransactionType.T7:
-                result = transaction_7(db, hop.data["order_id"])
-
-            if result:
-                # print('transaction_type: ', transaction_type, 'hop_id: ', hop_id, 'result: ', result)
-                # TODO
-                # transaction_completed = history_table.complete_transaction_hop(
-                #     hop, CURRENT_SERVER_PORT
-                # )
-                # above function will completed transaction if hop_id == total_hops and return True if transaction completed else return False
-
-                # TODO if transaction completed, send backward message to origin client
-
-                return True
-        elif hop and hop.status == "Completed":
-            return True
-        else:
-            print(f"Unable to execute hop: {hop_id} not found or already executed.")
-    else:
+    
+    if not transaction:
         print(f"Transaction {transaction_id} not found.")
-    return False
+        return False
+    
+    transaction_type = transaction.transaction_type
+    hop = transaction.hops.get(hop_id)
+
+    if not hop : 
+        print(f"Unable to execute hop: {hop_id} not found")
+        return False
+    elif  hop.status == "Completed":
+        return True
+
+
+    lock_acquired = await lock_manager.acquire_all_locks(transaction_type)
+    if not lock_acquired:
+        print(f"Transaction {transaction_type} failed to acquire necessary locks")
+        return False
+
+    try:
+        # print(f"Lock success! Transaction {transaction_type} is executing")
+        # Process the current hop
+        if transaction_type == TransactionType.T1:
+            result = transaction_1(
+                db, hop.data["name"], hop.data["email"], hop.data["address"]
+            )
+            # row_count = get_row_count(db, "Customers")
+        elif transaction_type == TransactionType.T2:
+            result = transaction_2(
+                db,
+                hop.data["model_name"],
+                hop.data["resolution"],
+                hop.data["lens_type"],
+                hop.data["price"],
+            )
+            # row_count = get_row_count(db, "Cameras")
+        elif transaction_type == TransactionType.T3:
+            if hop_id == 1:
+                result = transaction_3_hop1(db, hop.data["customer_id"])
+            elif hop_id == 2:
+                result = transaction_3_hop2(
+                    db, hop.data["customer_id"], hop.data["quantity"]
+                )
+        elif transaction_type == TransactionType.T4:
+            if hop_id == 1:
+                result = transaction_4_hop1(db, hop.data["camera_id"])
+            elif hop_id == 2:
+                result = transaction_4_hop2(
+                    db, hop.data["camera_id"], hop.data["quantity"]
+                )
+        elif transaction_type == TransactionType.T5:
+            result = transaction_5(db, hop.data["customer_id"])
+        elif transaction_type == TransactionType.T6:
+            result = transaction_6(db, hop.data["camera_id"])
+        elif transaction_type == TransactionType.T7:
+            result = transaction_7(db, hop.data["order_id"])
+    finally:
+        lock_manager.release_locks(transaction_type)
+        if not result:
+            print(f"Lock released! Transaction {transaction_type} is failed")
+            return False
+        # print(f"Lock released! Transaction {transaction_type} is completed")
+        # TODO if transaction completed, send backward message to origin client
+        return True
+
 
 
 async def main():
