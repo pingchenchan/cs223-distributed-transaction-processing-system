@@ -48,20 +48,20 @@ class TimeTracker:
             start_time, _ = self.events[-1]
             self.events[-1] = (start_time, timestamp)
 
-    def get_total_time(self):
+    def get_total_time(self): 
         return sum((end_time - start_time).total_seconds() * 1000000  # microseconds
                    for start_time, end_time in self.events if start_time and end_time)
 
     def get_event_count(self):
         return len(self.events)
 
-    def concat(self, other):
+    def concat(self, other): # concat two time tracker
         if isinstance(other, TimeTracker):
             self.events.extend(other.events)
         else:
             raise TypeError("The 'other' object must be an instance of TimeTracker")
     
-    def load_from_data(self, data):
+    def load_from_data(self, data): # load from json data
         """Load events from a list of dictionaries."""
         for item in data:
             # If data is [], this loop does not execute

@@ -110,11 +110,12 @@ class HistoryTable:
 
 
 
-    def complete_transaction_hop(self,hop):
+    def complete_transaction_hop(self,hop, CURRENT_SERVER_PORT):
         transaction = self.transactions.get(hop.transaction_id)
         if hop and hop.status == 'Active':
             hop.status = 'Completed'
             hop.end_time = datetime.now()
+            hop.server_exe = CURRENT_SERVER_PORT
             transaction.last_completed_hop = hop.hop_id
             if transaction.last_completed_hop == transaction.total_hops:
                 transaction.status = 'Completed'

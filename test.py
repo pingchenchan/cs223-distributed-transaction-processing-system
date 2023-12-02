@@ -42,7 +42,7 @@ def generate_transaction_data(transaction_type):
 async def send_testing_message(uri):
     messages = [] 
     start_time = time.time()
-    for i in range(3000):
+    for i in range(30):
         # sleep_for = random.uniform(0.0001, 0.001)
         # await asyncio.sleep(sleep_for)
 
