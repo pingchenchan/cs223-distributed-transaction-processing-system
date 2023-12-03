@@ -1,0 +1,21 @@
+{
+    "order_server": {
+        "port": 5003,
+        "type": "w"
+    },
+    "client1_server": {
+        "port": 5004,
+        "type": "c1"
+    },
+    "client2_server": {
+        "port": 5005,
+        "type": "c2"
+    },
+    "priority":{
+        "hop_1": 10,
+        "hop_2": 0,
+        "hop_backward": 5,
+        "hop_forward": 5
+    }
+
+}

@@ -1,0 +1,37 @@
+
+Overall Summary
+---------------
+Average Transaction Latency: 4008.53 microseconds
+
+Average Latency by Hop for Each Transaction Type
+--------------------------------------------------------------------------------------------------------------------
+| Definition of Latency: End Time - Start Time (microseconds)                                                      | 
+| Formula:  Transaction Latency = Sum of Hop Latencies                                                             | 
+| T1 - Average Transaction Latency:    5782.86 , First Hop Latency:    5779.43 , Second Hop Latency:       0.00    |
+| T2 - Average Transaction Latency:     752.94 , First Hop Latency:     749.00 , Second Hop Latency:       0.00    |
+| T3 - Average Transaction Latency:   14642.29 , First Hop Latency:   14137.29 , Second Hop Latency:     499.35    |
+| T4 - Average Transaction Latency:     788.08 , First Hop Latency:     203.92 , Second Hop Latency:     577.17    |
+| T5 - Average Transaction Latency:    4344.22 , First Hop Latency:    4341.00 , Second Hop Latency:       0.00    |
+| T6 - Average Transaction Latency:     252.88 , First Hop Latency:     249.00 , Second Hop Latency:       0.00    |
+| T7 - Average Transaction Latency:     395.38 , First Hop Latency:     390.56 , Second Hop Latency:       0.00    |
+--------------------------------------------------------------------------------------------------------------------
+
+
+Statistics by Transaction Type
+--------------------------------------------------------------------------------------------------------------------
+| Definition of Waiting Time: Queue Exit Time - Enter Time or WebSocket Received Time - Send Time (microseconds)   | 
+| Formula:  Hop Latency = (Queue: Wait Avg Time * Wait Avg Ct) + (WebSockets: Avg Time * Avg Ct) + SQL Avg Time    | 
+| T1 Hop 1 -      Queue Wait: Avg Time:      49.93 , Avg Count: 2.00                                               | 
+|                 WebSockets: Avg Time:    2522.18 , Avg Count: 2.00                                               | 
+| T2 Hop 1 -      Queue Wait: Avg Time:     261.75 , Avg Count: 1.00                                               | 
+| T3 Hop 1 -      Queue Wait: Avg Time:     108.56 , Avg Count: 2.00                                               | 
+|                 WebSockets: Avg Time:    6557.97 , Avg Count: 2.00                                               | 
+| T3 Hop 2 -      Queue Wait: Avg Time:       2.71 , Avg Count: 1.00                                               | 
+| T4 Hop 1 -      Queue Wait: Avg Time:     149.67 , Avg Count: 1.00                                               | 
+| T4 Hop 2 -      Queue Wait: Avg Time:       2.25 , Avg Count: 1.00                                               | 
+| T5 Hop 1 -      Queue Wait: Avg Time:      38.22 , Avg Count: 2.00                                               | 
+|                 WebSockets: Avg Time:    2067.39 , Avg Count: 2.00                                               | 
+| T6 Hop 1 -      Queue Wait: Avg Time:     210.31 , Avg Count: 1.00                                               | 
+| T7 Hop 1 -      Queue Wait: Avg Time:     342.75 , Avg Count: 1.00                                               | 
+--------------------------------------------------------------------------------------------------------------------
+

@@ -1,19 +1,23 @@
 # CompSci223-project
 
 ### install library
+
+
 ```shell
 pip install -r requirements.txt
+brew install jq #for .sh file read config.json
 ```
 
 ### run server
 ```shell
-python3 app.py
+./start_servers.sh
 ```
 
 ### IDEA
 - Study how to choose the best priority for each hop type.
 
-### TODO
+### CONFIG
+- Please check config.json.
 
 
 

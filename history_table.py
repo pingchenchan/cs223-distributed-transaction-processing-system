@@ -20,7 +20,7 @@ class Hop:
             TimeTracker()
         )  # [(send_timestep, receive_timestep), ...]
         self.queue_tracker = TimeTracker()
-        self.hop_executor_server = None  
+        self.hop_executor_server = None
 
     @property
     def status(self):
@@ -83,6 +83,7 @@ class Transaction:
         self.hops = {}  # {1: Hop, 2: Hop, ...}
         self.total_hops = total_hops
         self.last_completed_hop = 0
+
     def end_processing(self):
         self.end_time = datetime.now()
 
@@ -99,6 +100,7 @@ class HistoryTable:
     def __init__(self):
         if not self._is_initialized:
             self.transactions = {}
+            self.current_server_type = None
             self._is_initialized = True
 
     def add_transaction(self, transaction_type, total_hops) -> str:
@@ -163,9 +165,9 @@ class HistoryTable:
                     return hop
             return None
         else:
-            print(f"Transaction {transaction_id} not found.")
+            print(f"789 Transaction {transaction_id} not found.")
 
-    def write_transaction_log(self, each_transaction=True):
+    async def write_transaction_log(self, each_transaction=True):
         """Write the transaction log to a file."""
 
         total_latency = 0
@@ -185,14 +187,26 @@ class HistoryTable:
         websocket_transmission_count_by_hop = defaultdict(lambda: defaultdict(int))
         websocket_transmission_count_by_hop_2 = defaultdict(lambda: defaultdict(int))
 
-        with open("transaction_log.txt", "w") as f:
+        with open(f"./log/{self.current_server_type}_transaction_log.txt", "w") as f:
             if each_transaction:
                 f.write("Transaction Log Summary\n")
                 f.write("======================\n\n")
 
+                # write now time
+                now = datetime.now()
+                f.write(f"Current Time: {now.strftime('%Y-%m-%d %H:%M:%S:%f')}\n\n")
+
             for transaction_id, transaction in self.transactions.items():
                 transaction_latency = "Not finished"
-                if transaction.end_time:
+                # f.write(
+                #         f"123Transaction {transaction_id} end time: {transaction.end_time}, start time: {transaction.start_time}\n"
+                #     )
+                
+                # f.write(
+                #         f"33Transaction {transaction_id} end time: {self.transactions[transaction_id].end_time}, start time: {self.transactions[transaction_id].start_time}\n"
+                #     )
+                if transaction.status == "Completed":
+ 
                     transaction_latency = (
                         transaction.end_time - transaction.start_time
                     ).total_seconds() * 1000000  # in microseconds
@@ -209,12 +223,11 @@ class HistoryTable:
                         f"    Transaction Type: {transaction.transaction_type.name}, Latency (us): {transaction_latency}\n"
                     )
 
-
                 for hop_id, hop in transaction.hops.items():
                     if not hop.status == "Completed":
                         f.write(
                             f"Not Completed Hops:    Hop :{hop_id}, Hop executor server: {hop.hop_executor_server}, Status: {hop.status}, Transaction Type: {transaction.transaction_type.name}\n"
-                        )   
+                        )
                     hop_latency = "Not finished"
                     if hop.end_time:
                         hop_latency = (
@@ -258,9 +271,15 @@ class HistoryTable:
             )
 
             f.write("Average Latency by Hop for Each Transaction Type\n")
-            f.write("--------------------------------------------------------------------------------------------------------------------\n")
-            f.write("| Definition of Latency: End Time - Start Time (microseconds)                                                      | \n")
-            f.write("| Formula:  Transaction Latency = Sum of Hop Latencies                                                             | \n")
+            f.write(
+                "--------------------------------------------------------------------------------------------------------------------\n"
+            )
+            f.write(
+                "| Definition of Latency: End Time - Start Time (microseconds)                                                      | \n"
+            )
+            f.write(
+                "| Formula:  Transaction Latency = Sum of Hop Latencies                                                             | \n"
+            )
             for transaction_type in TransactionType:
                 avg_latency = (
                     (
@@ -289,32 +308,33 @@ class HistoryTable:
                 f.write(
                     f"| {transaction_type.name} - Average Transaction Latency: {avg_latency:10.2f} , First Hop Latency: {avg_first_hop_latency:10.2f} , Second Hop Latency: {avg_second_hop_latency:10.2f}    |\n"
                 )
-            f.write("--------------------------------------------------------------------------------------------------------------------\n\n")
+            f.write(
+                "--------------------------------------------------------------------------------------------------------------------\n\n"
+            )
 
             f.write("\nStatistics by Transaction Type\n")
-            f.write("--------------------------------------------------------------------------------------------------------------------\n")
-            f.write("| Definition of Waiting Time: Queue Exit Time - Enter Time or WebSocket Received Time - Send Time (microseconds)   | \n")
-            f.write("| Formula:  Hop Latency = (Queue: Wait Avg Time * Wait Avg Ct) + (WebSockets: Avg Time * Avg Ct) + SQL Avg Time    | \n")                                                         
+            f.write(
+                "--------------------------------------------------------------------------------------------------------------------\n"
+            )
+            f.write(
+                "| Definition of Waiting Time: Queue Exit Time - Enter Time or WebSocket Received Time - Send Time (microseconds)   | \n"
+            )
+            f.write(
+                "| Formula:  Hop Latency = (Queue: Wait Avg Time * Wait Avg Ct) + (WebSockets: Avg Time * Avg Ct) + SQL Avg Time    | \n"
+            )
             for transaction_type in TransactionType:
                 for hop_id in [1, 2]:
-                    avg_queue_wait_time = (
-                        queue_wait_time_by_hop[transaction_type][hop_id]/(queue_wait_count_by_hop[transaction_type][hop_id]if queue_wait_count_by_hop[transaction_type][
-                            hop_id
-                        ]
-                        > 0
-                        else 1)
-                       
-                        
+                    avg_queue_wait_time = queue_wait_time_by_hop[transaction_type][
+                        hop_id
+                    ] / (
+                        queue_wait_count_by_hop[transaction_type][hop_id]
+                        if queue_wait_count_by_hop[transaction_type][hop_id] > 0
+                        else 1
                     )
                     avg_websocket_transmission_time = (
                         websocket_transmission_time_by_hop[transaction_type][hop_id]
-                        / websocket_transmission_count_by_hop[transaction_type][
-                            hop_id
-                        ]
-                        
-                        if websocket_transmission_count_by_hop[transaction_type][
-                            hop_id
-                        ]
+                        / websocket_transmission_count_by_hop[transaction_type][hop_id]
+                        if websocket_transmission_count_by_hop[transaction_type][hop_id]
                         > 0
                         else 1
                     )
@@ -322,9 +342,16 @@ class HistoryTable:
                         f.write(
                             f"| {transaction_type.name} Hop {hop_id} -      Queue Wait: Avg Time: {avg_queue_wait_time:10.2f} , Avg Count: {queue_wait_count_by_hop[transaction_type][hop_id]/queue_wait_count_by_hop_2[transaction_type][hop_id] if queue_wait_count_by_hop_2[transaction_type][hop_id] > 0 else 1:3.2f}                                               | \n"
                         )
-                    if avg_websocket_transmission_time and websocket_transmission_count_by_hop[transaction_type][hop_id]:
+                    if (
+                        avg_websocket_transmission_time
+                        and websocket_transmission_count_by_hop[transaction_type][
+                            hop_id
+                        ]
+                    ):
                         f.write(
                             f"|                 WebSockets: Avg Time: {avg_websocket_transmission_time:10.2f} , Avg Count: {websocket_transmission_count_by_hop[transaction_type][hop_id]/websocket_transmission_count_by_hop_2[transaction_type][hop_id] if websocket_transmission_count_by_hop_2[transaction_type][hop_id] > 0 else 1:3.2f}                                               | \n"
                         )
-            f.write("--------------------------------------------------------------------------------------------------------------------\n")
+            f.write(
+                "--------------------------------------------------------------------------------------------------------------------\n"
+            )
             f.write("\n")

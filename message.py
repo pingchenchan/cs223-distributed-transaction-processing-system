@@ -9,11 +9,14 @@ from datetime import datetime
 # Message class
 # 1. User message: from command line, execute transaction
 # 2. Detailed message: for detailed message
+with open("config.json", "r") as config_file:
+    config = json.load(config_file)
+
 class PRIORITY(Enum):
-    HOP_1 = 10
-    HOP_2 = 0
-    HOP_BACKWARD = 5
-    HOP_FORWARD = 5
+    HOP_1 = config["priority"].get("hop_1")
+    HOP_2 = config["priority"].get("hop_2")
+    HOP_BACKWARD = config["priority"].get("hop_backward")
+    HOP_FORWARD = config["priority"].get("hop_forward")
 
 
 class MessageType(Enum):
@@ -326,7 +329,8 @@ class WebSocketClient:
             except websockets.ConnectionClosedError as e:
                 print(f"Connection closed: {e}")
             except Exception as e:
-                print(f"Error sending message: {e}")
+                pass
+                # print(f"Error sending message: {e}")
 
 
 class WebSocketClientForBatchMessage:
