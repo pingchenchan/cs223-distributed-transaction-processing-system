@@ -11,9 +11,6 @@ CUSTOMER_ID_COUNTER = 0
 
 
 async def build_db(CURRENT_SERVER_TYPE):
-    db_directory = "./database"
-    if not os.path.exists(db_directory):
-        os.makedirs(db_directory)
     db_path = f"./database/{CURRENT_SERVER_TYPE}.db"
     if os.path.exists(db_path):
         # return  # Database already exists

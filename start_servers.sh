@@ -1,5 +1,8 @@
 #!/bin/bash
 
+mkdir -p ./database
+mkdir -p ./log
+
 # read config.json to get port numbers
 ORDER_SERVER_PORT=$(jq '.order_server.port' config.json)
 CLIENT1_SERVER_PORT=$(jq '.client1_server.port' config.json)
