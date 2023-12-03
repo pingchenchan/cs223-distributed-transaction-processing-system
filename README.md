@@ -17,6 +17,7 @@ brew install jq #for .sh file read config.json
 ### NOTE
 - Now, transaction_log files will be saved in the log folder.
 - Each server has its own database which is in the database folder.
+- In testing, it took 300 seconds to execute 10,000 transactions (on my macbook air).
 
 ### IDEA
 - Study how to choose the best priority for each hop type.
