@@ -187,7 +187,7 @@ class HistoryTable:
         websocket_transmission_count_by_hop = defaultdict(lambda: defaultdict(int))
         websocket_transmission_count_by_hop_2 = defaultdict(lambda: defaultdict(int))
 
-        with open(f"./log/{self.current_server_type}_transaction_log.txt", "w") as f:
+        with open(f"./log/{self.current_server_type}.transaction_log.txt", "w") as f:
             if each_transaction:
                 f.write("Transaction Log Summary\n")
                 f.write("======================\n\n")

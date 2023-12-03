@@ -128,7 +128,13 @@ dmypy.json
 .pyre/
 
 
-log/
+
+log/*
+database/*
+
+
+!log/
+!database/
 
 
 # pytype static type analyzer
