@@ -129,7 +129,7 @@ dmypy.json
 
 
 log/
-database/
+
 
 # pytype static type analyzer
 .pytype/

@@ -1,8 +1,6 @@
 # CompSci223-project
 
 ### install library
-
-
 ```shell
 pip install -r requirements.txt
 brew install jq #for .sh file read config.json
@@ -13,13 +11,15 @@ brew install jq #for .sh file read config.json
 ./start_servers.sh
 ```
 
-### IDEA
-- Study how to choose the best priority for each hop type.
-
 ### CONFIG
 - Please check config.json.
 
+### NOTE
+- Now, transaction_log files will be saved in the log folder.
+- Each server has its own database which is in the database folder.
 
+### IDEA
+- Study how to choose the best priority for each hop type.
 
 ### Question
 
