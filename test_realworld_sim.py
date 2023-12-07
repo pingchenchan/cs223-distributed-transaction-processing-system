@@ -46,7 +46,7 @@ def generate_transaction_data(transaction_type, range=1, server=1):
         order_id = random.randint(1, range)
         return {'order_id': order_id}
 
-async def send_testing_message(uri, server=0, loops=100):
+async def send_testing_message(uri, server, loops=100):
     # 0-stock 1-customerA 2-customerB
     added_lines = 1
     added_orders = 1
@@ -54,7 +54,7 @@ async def send_testing_message(uri, server=0, loops=100):
     start_time = time.time()
     if server == 0:
         data = generate_transaction_data(TransactionType.T2)
-        message = UserMessage(MessageType.USER, transaction_type, data)
+        message = UserMessage(MessageType.USER, TransactionType.T2, data)
 
         '''method 1: send batch messages by using WebSocketClientForBatchMessage()'''
         message_json = message_to_json(message)
@@ -76,7 +76,7 @@ async def send_testing_message(uri, server=0, loops=100):
                 added_orders = added_orders + 1
     elif server == 1 or server == 2:
         data = generate_transaction_data(TransactionType.T1)
-        message = UserMessage(MessageType.USER, transaction_type, data)
+        message = UserMessage(MessageType.USER, TransactionType.T1, data)
 
         '''method 1: send batch messages by using WebSocketClientForBatchMessage()'''
         message_json = message_to_json(message)
@@ -103,15 +103,15 @@ async def send_testing_message(uri, server=0, loops=100):
 
 
     '''calculate the time for processing messages'''
-    print(f"=> The client info: idx-{i} msg has {reply}")
+    print(f"=> The client info: idx -{server} msg has {reply}")
     end_time = time.time()  # 
     elapsed_time = end_time - start_time  # 
     print(f"Reply received in {elapsed_time:.2f} seconds: {reply}")
 
     '''write transaction log to history table'''
-    # await asyncio.sleep(3)
+    await asyncio.sleep(2)
     history_table = HistoryTable()
-    history_table.write_transaction_log(each_transaction=False)
+    await history_table.write_transaction_log(each_transaction=False)
     print(f"wrote transaction log ")
 
     # g = 0

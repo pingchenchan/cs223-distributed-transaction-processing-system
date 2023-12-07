@@ -4,7 +4,7 @@ import random
 import json
 from history_table import *
 from message import *
-from test import *
+from test_realworld_sim import *
 from lock_manager import *
 import argparse
 
@@ -520,6 +520,8 @@ async def main(port, server_type):
     ORDER_SERVER_PORT = config["order_server"].get("port")
     CUSTOMER_1_SERVER_PORT = config["client1_server"].get("port")
     CUSTOMER_2_SERVER_PORT = config["client2_server"].get("port")
+    
+    server_map= {ORDER_SERVER_PORT:0, CUSTOMER_1_SERVER_PORT:1, CUSTOMER_2_SERVER_PORT:2}
 
     print(f"Starting {server_type} server on port {port}")
     
@@ -541,7 +543,7 @@ async def main(port, server_type):
         thread_handler(db)
     )
     client_task = asyncio.create_task(
-        send_testing_message(f"ws://localhost:{CURRENT_SERVER_PORT}", CURRENT_SERVER_TYPE)
+        send_testing_message(f"ws://localhost:{CURRENT_SERVER_PORT}", server_map[CURRENT_SERVER_PORT])
     )
 
     # concurently run the server, handler and client
