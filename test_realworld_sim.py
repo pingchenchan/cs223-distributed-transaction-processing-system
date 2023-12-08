@@ -43,8 +43,9 @@ def generate_transaction_data(transaction_type, range=1, server=1):
         camera_id = random.randint(1, range)
         return {'camera_id': camera_id}
     elif transaction_type == TransactionType.T7:
-        order_id = random.randint(1, range)
-        return {'order_id': order_id}
+        customer_id = random.randint(1, 3)
+        order_id = random.randint(1, 3)
+        return {'order_id': order_id, 'customer_id': customer_id}
 
 async def send_testing_message(uri, server, loops=100):
     # 0-stock 1-customerA 2-customerB

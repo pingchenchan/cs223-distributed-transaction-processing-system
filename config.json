@@ -1,14 +1,14 @@
 {
     "order_server": {
-        "port": 5003,
+        "port": 5006,
         "type": "w"
     },
     "client1_server": {
-        "port": 5004,
+        "port": 5007,
         "type": "c1"
     },
     "client2_server": {
-        "port": 5005,
+        "port": 5008,
         "type": "c2"
     },
     "priority":{

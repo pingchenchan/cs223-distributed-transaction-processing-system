@@ -200,8 +200,7 @@ def transaction_3_hop1(db, customer_id):
     # if not customer_count:
     #     print("SQL info: T3_1 failed, customer_id: ", customer_id)
     # print('SQL info: T3_1 successed, customer_count: ', customer_count)
-    return True
-
+    return True 
 
 def transaction_3_hop2(db, customer_id, quantity):
     result = db.execute(
@@ -211,7 +210,7 @@ def transaction_3_hop2(db, customer_id, quantity):
     # if not result:
     #     print("SQL info: T3_2 failed, customer_id: ", customer_id)
     # print('SQL info: T3_2 successed,  result: ', result)
-    return True
+    return True 
 
 
 def transaction_4_hop1(db, camera_id):
@@ -219,7 +218,7 @@ def transaction_4_hop1(db, camera_id):
         "SELECT COUNT(*) FROM Cameras WHERE camera_id = ?;", (camera_id,)
     )[0]
     # print('SQL info: T4_1 successed, camera_count info: ', camera_count)
-    return True
+    return True 
 
 
 def transaction_4_hop2(db, camera_id, quantity):
@@ -228,24 +227,32 @@ def transaction_4_hop2(db, camera_id, quantity):
         (1, camera_id, quantity),
     )  # Assuming a default customer_id of 1
     # print('SQL info: T4_2 successed, result info:', result)
-    return True
+    return True 
 
 
 def transaction_5(db, customer_id):
     address = db.fetchone(
         "SELECT address FROM Customers WHERE customer_id = ?;", (customer_id,)
     )
-    # print('SQL info: T7 successed, address info:',address)
-    return True
+    # if not address: print('SQL info: T5 successed, address info:',address, 'customer_id', customer_id)
+    return True 
 
 
 def transaction_6(db, camera_id):
     price = db.fetchone("SELECT price FROM Cameras WHERE camera_id = ?;", (camera_id,))
     # print('SQL info: T7 successed, price info:',price)
-    return True
+    return True 
 
 
-def transaction_7(db, order_id):
+def transaction_7_hop1(db, order_id):
     order = db.fetchall("SELECT * FROM Orders WHERE order_id = ?;", (order_id,))
     # print('SQL info: T7 successed, order info:',order)
-    return True
+    return True if order else False
+
+def transaction_7_hop2(db, customer_id):
+    email = db.fetchone(
+        "SELECT email FROM Customers WHERE customer_id = ?;", (customer_id,)
+    )
+    # if not email:
+    #     print('SQL info: T7 2 successed, email info:',email)
+    return True 

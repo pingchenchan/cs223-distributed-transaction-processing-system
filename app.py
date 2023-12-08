@@ -26,7 +26,6 @@ calculate_total_hops = (
         TransactionType.T2,
         TransactionType.T5,
         TransactionType.T6,
-        TransactionType.T7,
     ]
     else 2
 )
@@ -193,6 +192,7 @@ def check_hop(transaction_type, hop_id, customer_id=None):
         (TransactionType.T1, 1),
         (TransactionType.T3, 1),
         (TransactionType.T5, 1),
+        (TransactionType.T7, 2),
     }
 
     # Check for hops that must be executed on the order server
@@ -211,6 +211,7 @@ def check_hop(transaction_type, hop_id, customer_id=None):
             target_server_port = (
                 CUSTOMER_2_SERVER_PORT if customer_id % 2 == 0 else CUSTOMER_1_SERVER_PORT
             )
+            # print('forward to ', 'target_server_port', target_server_port, 'customer_id', customer_id)
             return (
                 CURRENT_SERVER_PORT in [CUSTOMER_1_SERVER_PORT, CUSTOMER_2_SERVER_PORT],
                 target_server_port,
@@ -274,7 +275,7 @@ async def thread_handler(db) :
                     )
 
                 # If secend hop is not completed, put second hop into priority queue
-                if message.hop_id == 1 and transaction_type in [transaction_type.T3, transaction_type.T4]:
+                if message.hop_id == 1 and transaction_type in [transaction_type.T3, transaction_type.T4, transaction_type.T7]:
                     transaction.hops[2].start_processing()
                     # chech if this hop can be done in this server; if not, send forward message to order server
                     is_current_server, target_server = check_hop(
@@ -388,7 +389,7 @@ async def thread_handler(db) :
                         )
 
                         # if first hop is completed, put second hop into priority queue
-                        if message.hop.hop_id == 1 and transaction_type in [TransactionType.T3, TransactionType.T4]:
+                        if message.hop.hop_id == 1 and transaction_type in [TransactionType.T3, TransactionType.T4, TransactionType.T7]:
                             history_table.transactions.get(
                                 message.hop.transaction_id
                             ).hops[2].start_processing()
@@ -501,11 +502,15 @@ async def execute_hop(db, transaction_id, hop_id, transaction_type=None, data=No
         elif transaction_type == TransactionType.T6:
             result = transaction_6(db, parameters["camera_id"])
         elif transaction_type == TransactionType.T7:
-            result = transaction_7(db, parameters["order_id"])
+            if hop_id == 1:
+                result = transaction_7_hop1(db, parameters["order_id"])
+            elif hop_id == 2:
+                result = transaction_7_hop2(db, parameters["customer_id"])
+            
     finally:
         lock_manager.release_locks(transaction_type)
         if not result:
-            print(f"Lock released! Transaction {transaction_type} is failed")
+            print(f"Lock released! Transaction {transaction_type} is failed", CURRENT_SERVER_TYPE, parameters["customer_id"])
             return False
         # print(f"Lock released! Transaction {transaction_type} is completed")
         # TODO if transaction completed, send backward message to origin client

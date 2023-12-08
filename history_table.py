@@ -119,12 +119,11 @@ class HistoryTable:
             transaction_type.T2,
             transaction_type.T5,
             transaction_type.T6,
-            transaction_type.T7,
         ]:
             self.transactions[transaction_id].hops[1] = Hop(
                 transaction_id=transaction_id, hop_id=1, data=data
             )  # hop_id start from 1
-        if transaction_type in [transaction_type.T3, transaction_type.T4]:
+        if transaction_type in [transaction_type.T3, transaction_type.T4,transaction_type.T7]:
             self.transactions[transaction_id].hops[1] = Hop(
                 transaction_id=transaction_id, hop_id=1, data=data
             )

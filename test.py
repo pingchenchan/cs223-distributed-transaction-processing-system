@@ -37,8 +37,9 @@ def generate_transaction_data(transaction_type):
         camera_id = random.randint(1, 3)
         return {'camera_id': camera_id}
     elif transaction_type == TransactionType.T7:
+        customer_id = random.randint(1, 3)
         order_id = random.randint(1, 3)
-        return {'order_id': order_id}
+        return {'order_id': order_id, 'customer_id': customer_id}
 async def countdown_timer(seconds):
     for remaining in range(seconds, 0, -1):
         print(f"Remaining time: {remaining} seconds wait.", end="\r", flush=True)
@@ -47,7 +48,7 @@ async def countdown_timer(seconds):
 async def send_testing_message(uri, current_server_type):
     messages = [] 
     start_time = time.time()
-    loops=300
+    loops=400
     for i in range(loops):
         # sleep_for = random.uniform(0.0001, 0.001)
         # await asyncio.sleep(sleep_for)
@@ -55,8 +56,8 @@ async def send_testing_message(uri, current_server_type):
         '''Choose transaction types, feel free to change it '''
         # transaction_type = random.choice([TransactionType.T1, TransactionType.T2,  TransactionType.T5, TransactionType.T6, TransactionType.T7])
         transaction_type = random.choice([TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7])
-        # transaction_type = random.choice([TransactionType.T3, TransactionType.T4])
-        # transaction_type = random.choice([ TransactionType.T3,TransactionType.T4, TransactionType.T7])
+        # transaction_type = random.choice([TransactionType.T5, TransactionType.T6])
+        # transaction_type = random.choice([ TransactionType.T7])
         
 
         data = generate_transaction_data(transaction_type)
