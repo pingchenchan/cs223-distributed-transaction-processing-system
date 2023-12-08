@@ -213,7 +213,7 @@ def check_hop(transaction_type, hop_id, customer_id=None):
             )
             # print('forward to ', 'target_server_port', target_server_port, 'customer_id', customer_id)
             return (
-                CURRENT_SERVER_PORT in [CUSTOMER_1_SERVER_PORT, CUSTOMER_2_SERVER_PORT],
+                CURRENT_SERVER_PORT == target_server_port,
                 target_server_port,
             )
         except Exception as e:
@@ -313,14 +313,9 @@ async def thread_handler(db) :
 
                 websocket_receive_time = message.websocket_receive_time
 
-                # execute_hop() includes Locking mechanism
-                # '''for testing'''
-                # if message.transaction_id not in history_table.transactions:
-                #     print(f"000 Transaction {message.transaction_id} not found.")
-                #     return 
 
                 # ''' '''
-                result = await execute_hop(db, message.transaction_id, message.hop_id, message.transaction_type, message.data)
+                result = await execute_hop(db, message.transaction_id, message.hop_id, message.transaction_type, message.data, 'forward')
 
                 # Send a backward message with completion or failure information
                 backward_message = BackwardMessage(
@@ -380,7 +375,8 @@ async def thread_handler(db) :
 
                     # ''' '''
                     result = await execute_hop(
-                        db, message.hop.transaction_id, message.hop.hop_id
+                        db=db,transaction_id=message.hop.transaction_id,hop_id=message.hop.hop_id,transaction_type=transaction_type,data=message.hop.data,message_type='hop'
+                       
                     )
 
                     if result:
@@ -397,6 +393,7 @@ async def thread_handler(db) :
                                 message.hop.transaction_id, 2, client_id
                             )
                     else:
+                        print(f"Unable to execute hop: {message.hop.hop_id} failed")
                         # if failed, reinsert the hop into the priority queue, priority +1
                         history_table.transactions.get(
                             message.hop.transaction_id
@@ -428,8 +425,8 @@ async def thread_handler(db) :
         finally:
             priority_queue.task_done()
 
-async def execute_hop(db, transaction_id, hop_id, transaction_type=None, data=None): # last two parameters are for ForwardMessage
-    transaction = history_table.transactions.get(transaction_id)
+async def execute_hop(db, transaction_id, hop_id, transaction_type=None, data=None,message_type=None): # last two parameters are for ForwardMessage
+    transaction = history_table.transactions.get(transaction_id, )
     isForwardMessage = False
     if not transaction: # is ForwardMessage, only need to execute hop
         isForwardMessage = True
@@ -510,7 +507,7 @@ async def execute_hop(db, transaction_id, hop_id, transaction_type=None, data=No
     finally:
         lock_manager.release_locks(transaction_type)
         if not result:
-            print(f"Lock released! Transaction {transaction_type} is failed", CURRENT_SERVER_TYPE, parameters["customer_id"])
+            print(f"EXE SQL FAIL!!! Transaction {transaction_type} hop {hop_id} is failed", CURRENT_SERVER_TYPE, parameters["customer_id"],'message_type', message_type)
             return False
         # print(f"Lock released! Transaction {transaction_type} is completed")
         # TODO if transaction completed, send backward message to origin client

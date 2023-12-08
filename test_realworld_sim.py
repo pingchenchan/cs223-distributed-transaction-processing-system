@@ -104,10 +104,10 @@ async def send_testing_message(uri, server, loops=100):
 
 
     '''calculate the time for processing messages'''
-    print(f"=> The client info: idx -{server} msg has {reply}")
     end_time = time.time()  # 
     elapsed_time = end_time - start_time  # 
-    print(f"Reply received in {elapsed_time:.2f} seconds: {reply}")
+    print(f"Reply received in server-{ server}, elapsed_time ={elapsed_time:.2f} seconds, reply= {reply}")
+
 
     '''write transaction log to history table'''
     await asyncio.sleep(2)

@@ -173,24 +173,28 @@ def get_row_count(db, table_name):
 
 
 def transaction_1(db, name, email, address):
+    c1 = get_row_count(db,'Customers')
     global CUSTOMER_ID_COUNTER, CUSTOMER_ID_LOOKUP
     db.execute(
         "INSERT INTO Customers VALUES (?, ?, ?, ?);",
         (CUSTOMER_ID_COUNTER, name, email, address),
     )
     CUSTOMER_ID_LOOKUP.add(CUSTOMER_ID_COUNTER)
+    c2 = get_row_count(db,'Customers')
     # print('SQL info: T1 successed, customer_count',get_row_count(db,'Customers'), 'CUSTOMER_ID_COUNTER: ',CUSTOMER_ID_COUNTER, 'CUSTOMER_ID_LOOKUP: ', CUSTOMER_ID_LOOKUP)
     CUSTOMER_ID_COUNTER += 2
-    return True
+    return True if c2 - c1 == 1 else False
 
 
 def transaction_2(db, model_name, resolution, lens_type, price):
+    c1 = get_row_count(db, "Cameras")
     db.execute(
         "INSERT INTO Cameras (model_name, resolution, lens_type, price) VALUES (?, ?, ?, ?);",
         (model_name, resolution, lens_type, price),
     )
+    c2 = get_row_count(db, "Cameras")
     # print("SQL info: T2 successed, customer_count", get_row_count(db, "Cameras"))
-    return True
+    return True if c2 - c1 == 1 else False
 
 
 def transaction_3_hop1(db, customer_id):
@@ -198,9 +202,9 @@ def transaction_3_hop1(db, customer_id):
         "SELECT COUNT(*) FROM Customers WHERE customer_id = ?;", (customer_id,)
     )[0]
     # if not customer_count:
-    #     print("SQL info: T3_1 failed, customer_id: ", customer_id)
+    #     print("SQL info: T3_1 failed, customer_id: ", customer_id,'customer_count: ', customer_count)
     # print('SQL info: T3_1 successed, customer_count: ', customer_count)
-    return True 
+    return True if customer_count else False
 
 def transaction_3_hop2(db, customer_id, quantity):
     result = db.execute(
@@ -210,7 +214,7 @@ def transaction_3_hop2(db, customer_id, quantity):
     # if not result:
     #     print("SQL info: T3_2 failed, customer_id: ", customer_id)
     # print('SQL info: T3_2 successed,  result: ', result)
-    return True 
+    return True if result else False
 
 
 def transaction_4_hop1(db, camera_id):
@@ -218,7 +222,7 @@ def transaction_4_hop1(db, camera_id):
         "SELECT COUNT(*) FROM Cameras WHERE camera_id = ?;", (camera_id,)
     )[0]
     # print('SQL info: T4_1 successed, camera_count info: ', camera_count)
-    return True 
+    return True if camera_count else False
 
 
 def transaction_4_hop2(db, camera_id, quantity):
@@ -227,7 +231,7 @@ def transaction_4_hop2(db, camera_id, quantity):
         (1, camera_id, quantity),
     )  # Assuming a default customer_id of 1
     # print('SQL info: T4_2 successed, result info:', result)
-    return True 
+    return True if result else False
 
 
 def transaction_5(db, customer_id):
@@ -235,13 +239,13 @@ def transaction_5(db, customer_id):
         "SELECT address FROM Customers WHERE customer_id = ?;", (customer_id,)
     )
     # if not address: print('SQL info: T5 successed, address info:',address, 'customer_id', customer_id)
-    return True 
+    return True if address else False
 
 
 def transaction_6(db, camera_id):
     price = db.fetchone("SELECT price FROM Cameras WHERE camera_id = ?;", (camera_id,))
     # print('SQL info: T7 successed, price info:',price)
-    return True 
+    return True  if price else False
 
 
 def transaction_7_hop1(db, order_id):
@@ -255,4 +259,4 @@ def transaction_7_hop2(db, customer_id):
     )
     # if not email:
     #     print('SQL info: T7 2 successed, email info:',email)
-    return True 
+    return True  if email else False
