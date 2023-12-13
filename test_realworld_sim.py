@@ -48,14 +48,15 @@ def generate_transaction_data(transaction_type, range=1, server=1):
             customer_id = customer_id - 1
         return {'customer_id': customer_id}
     elif transaction_type == TransactionType.T6:
-        camera_id = random.randint(1, range)
+        camera_id = random.randint(1, 100)
         return {'camera_id': camera_id}
     elif transaction_type == TransactionType.T7:
         customer_id = random.randint(1, 3)
         order_id = random.randint(1, 3)
         return {'order_id': order_id, 'customer_id': customer_id}
 
-async def send_testing_message(uri, server, loops=500):
+
+async def send_testing_message(uri, server, loops,sleep_time_for_send_messages):
     # 0-stock 1-customerA 2-customerB
     added_lines = 1
     added_orders = 1
@@ -113,7 +114,7 @@ async def send_testing_message(uri, server, loops=500):
     
     '''Following code is for method 1:'''
     '''For other methods, please comment out the following line'''
-    reply = await WebSocketClientForBatchMessage.send_messages(messages, uri) 
+    reply = await WebSocketClientForBatchMessage.send_messages(messages, uri, sleep_time=sleep_time_for_send_messages) 
 
 
     '''calculate the time for processing messages'''
@@ -134,7 +135,7 @@ async def send_testing_message(uri, server, loops=500):
     countdown_timer(int(sleep_time))
 )
     history_table = HistoryTable()
-    await history_table.write_transaction_log(each_transaction=False,filename='test_realworld_sim')
+    await history_table.write_transaction_log(each_transaction=False,filename='test_realworld_sim'+' sleep='+str(sleep_time_for_send_messages)+' loop='+str(loops))
     print(f"wrote transaction log ")
 
     # g = 0

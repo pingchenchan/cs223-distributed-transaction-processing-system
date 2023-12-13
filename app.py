@@ -4,11 +4,13 @@ import random
 import json
 from history_table import *
 from message import *
-# from test_ideal_world import *
+from test_ideal_world import *
 # from test_random_feed import *
-from test_realworld_sim import *
+# from test_realworld_sim import *
 from lock_manager import *
 import argparse
+SLEEP_TIME = 0.0001
+LOOPS = 100
 
 # The two-phase locking protocol variant for concurrency control
 # where Transaction 3-4 can proceed only if Transaction 7 is not in progress, and vice versa.
@@ -548,7 +550,7 @@ async def main(port, server_type):
         thread_handler(db)
     )
     client_task = asyncio.create_task(
-        send_testing_message(f"ws://localhost:{CURRENT_SERVER_PORT}", server_map[CURRENT_SERVER_PORT])
+        send_testing_message(f"ws://localhost:{CURRENT_SERVER_PORT}", server_map[CURRENT_SERVER_PORT],loops=LOOPS,sleep_time_for_send_messages=SLEEP_TIME)  
     )
 
     # concurently run the server, handler and client

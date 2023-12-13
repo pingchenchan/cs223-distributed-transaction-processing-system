@@ -337,11 +337,14 @@ class WebSocketClientForBatchMessage:
     _semaphore = asyncio.Semaphore(1000)
 
     @staticmethod
-    async def send_messages(messages, uri):
+    async def send_messages(messages, uri, sleep_time=0):
         async with WebSocketClient._semaphore:
             try:
                 async with websockets.connect(uri) as websocket:
                     for message in messages:
+                        if sleep_time > 0:
+                            await asyncio.sleep(sleep_time)
+                        # print(f"sleep_time={sleep_time}")
                         await websocket.send(message)
                         reply = await websocket.recv()
             except websockets.ConnectionClosedError as e:
