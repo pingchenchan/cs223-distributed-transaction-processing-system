@@ -48,7 +48,7 @@ async def countdown_timer(seconds):
 async def send_testing_message(uri, current_server_type):
     messages = [] 
     start_time = time.time()
-    loops = 1000
+    loops = 10000
     for i in range(loops):
         # sleep_for = random.uniform(0.0001, 0.001)
         # await asyncio.sleep(sleep_for)
@@ -92,7 +92,7 @@ async def send_testing_message(uri, current_server_type):
 
     '''write transaction log to history table'''
     history_table = HistoryTable()
-    sleep_time = max(0.03*loops,1)
+    sleep_time = max(0.01*loops,1)
 
     '''
     Timer for executing the lots of concurrent transactions and than write transaction log,

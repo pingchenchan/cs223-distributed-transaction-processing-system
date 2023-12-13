@@ -6,7 +6,7 @@ import websockets
 import time
 from message import *
 from history_table import *
-
+from test import countdown_timer
 
 def generate_transaction_data(transaction_type):
     if transaction_type == TransactionType.T1:
@@ -76,9 +76,20 @@ async def send_testing_message(uri, server, loops=500):
     print(f"Reply received in server-{ server}, elapsed_time ={elapsed_time:.2f} seconds, reply= {reply}")
 
     '''write transaction log to history table'''
-    await asyncio.sleep(20)
     history_table = HistoryTable()
-    await history_table.write_transaction_log(each_transaction=False)
+    sleep_time = max(0.01*loops,1)
+
+    '''
+    Timer for executing the lots of concurrent transactions and than write transaction log,
+    otherwise, the logs will have many uncompleted transactions. 
+    Sometimes, the displayed number flashes because there are three counters counting down at the same time.
+    If still have many uncompleted transactions, please increase the sleep_time.
+    '''
+    await asyncio.gather(
+    countdown_timer(int(sleep_time))
+)
+    history_table = HistoryTable()
+    await history_table.write_transaction_log(each_transaction=False,filename='test_random_feed')
     print(f"wrote transaction log ")
 
     # g = 0

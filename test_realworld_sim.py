@@ -4,9 +4,8 @@ import random
 import asyncio
 import websockets
 import time
-from message import *
 from history_table import *
-
+from test import countdown_timer
 random.seed(114514)
 TX_LIST = [TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7]
 
@@ -73,8 +72,8 @@ async def send_testing_message(uri, server, loops=500):
             sleep_for = random.uniform(0.0001, 0.001)
             await asyncio.sleep(sleep_for)
             '''Choose transaction types, feel free to change it '''
-            transaction_type = random.choice(TX_LIST, weights=(0, 5, 0, 10, 10, 10, 10))
-
+            transaction_type = random.choices(TX_LIST, weights=(0, 5, 0, 10, 10, 10, 10))[0]
+            # print(f"server-{server} transaction_type={transaction_type}")
             data = generate_transaction_data(transaction_type, range=added_lines)
             message = UserMessage(MessageType.USER, transaction_type, data)
 
@@ -97,7 +96,8 @@ async def send_testing_message(uri, server, loops=500):
             sleep_for = random.uniform(0.0001, 0.001)
             await asyncio.sleep(sleep_for)
             '''Choose transaction types, feel free to change it '''
-            transaction_type = random.choice(TX_LIST, weights=(5, 0, 10, 0, 5, 10, 5))
+            transaction_type = random.choices(TX_LIST, weights=(5, 0, 10, 0, 5, 10, 5))[0]
+            # print(f"server-{server} transaction_type={transaction_type}")
 
             data = generate_transaction_data(transaction_type, range=added_lines, server=server)
             message = UserMessage(MessageType.USER, transaction_type, data)
@@ -122,10 +122,19 @@ async def send_testing_message(uri, server, loops=500):
     print(f"Reply received in server-{ server}, elapsed_time ={elapsed_time:.2f} seconds, reply= {reply}")
 
 
-    '''write transaction log to history table'''
-    await asyncio.sleep(20)
+    sleep_time = max(0.01*loops,1)
+
+    '''
+    Timer for executing the lots of concurrent transactions and than write transaction log,
+    otherwise, the logs will have many uncompleted transactions. 
+    Sometimes, the displayed number flashes because there are three counters counting down at the same time.
+    If still have many uncompleted transactions, please increase the sleep_time.
+    '''
+    await asyncio.gather(
+    countdown_timer(int(sleep_time))
+)
     history_table = HistoryTable()
-    await history_table.write_transaction_log(each_transaction=False)
+    await history_table.write_transaction_log(each_transaction=False,filename='test_realworld_sim')
     print(f"wrote transaction log ")
 
     # g = 0

@@ -166,7 +166,7 @@ class HistoryTable:
         else:
             print(f"789 Transaction {transaction_id} not found.")
 
-    async def write_transaction_log(self, each_transaction=True):
+    async def write_transaction_log(self, each_transaction=True, filename=None):
         """Write the transaction log to a file."""
 
         total_latency = 0
@@ -186,7 +186,7 @@ class HistoryTable:
         websocket_transmission_count_by_hop = defaultdict(lambda: defaultdict(int))
         websocket_transmission_count_by_hop_2 = defaultdict(lambda: defaultdict(int))
 
-        with open(f"./log/{self.current_server_type}.transaction_log.txt", "w") as f:
+        with open(f"./log/{filename}-{self.current_server_type}.transaction_log.txt", "w") as f:
             if each_transaction:
                 f.write("Transaction Log Summary\n")
                 f.write("======================\n\n")

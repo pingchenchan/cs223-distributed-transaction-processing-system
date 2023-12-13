@@ -4,6 +4,8 @@ import random
 import json
 from history_table import *
 from message import *
+# from test_ideal_world import *
+# from test_random_feed import *
 from test_realworld_sim import *
 from lock_manager import *
 import argparse
@@ -316,7 +318,8 @@ async def thread_handler(db) :
 
                 # ''' '''
                 result = await execute_hop(db, message.transaction_id, message.hop_id, message.transaction_type, message.data, 'forward')
-
+                if not result:
+                    print(f"Unable to execute FORWARD hop: {message.hop_id} failed")
                 # Send a backward message with completion or failure information
                 backward_message = BackwardMessage(
                     message_type=MessageType.BACKWARD,
@@ -393,7 +396,7 @@ async def thread_handler(db) :
                                 message.hop.transaction_id, 2, client_id
                             )
                     else:
-                        print(f"Unable to execute hop: {message.hop.hop_id} failed")
+                        print(f"Unable to execute HOP hop: {message.hop.hop_id} failed")
                         # if failed, reinsert the hop into the priority queue, priority +1
                         history_table.transactions.get(
                             message.hop.transaction_id
@@ -507,7 +510,7 @@ async def execute_hop(db, transaction_id, hop_id, transaction_type=None, data=No
     finally:
         lock_manager.release_locks(transaction_type)
         if not result:
-            print(f"EXE SQL FAIL!!! Transaction {transaction_type} hop {hop_id} is failed", CURRENT_SERVER_TYPE, parameters["customer_id"],'message_type', message_type)
+            print(f"EXE SQL FAIL!!! Transaction {transaction_type} hop {hop_id} is failed", CURRENT_SERVER_TYPE, 'customer_id',parameters["customer_id"],'camera_id',parameters["camera_id"],', message_type', message_type)
             return False
         # print(f"Lock released! Transaction {transaction_type} is completed")
         # TODO if transaction completed, send backward message to origin client
