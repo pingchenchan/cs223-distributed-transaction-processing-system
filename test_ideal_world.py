@@ -7,9 +7,6 @@ import time
 from message import *
 from history_table import *
 
-random.seed(114514)
-TX_LIST = [TransactionType.T1, TransactionType.T2, TransactionType.T3, TransactionType.T4, TransactionType.T5, TransactionType.T6, TransactionType.T7]
-
 
 def generate_transaction_data(transaction_type, range=1, server=1):
     if transaction_type == TransactionType.T1:
@@ -26,10 +23,7 @@ def generate_transaction_data(transaction_type, range=1, server=1):
         price = random.uniform(100, 1000)
         return {'model_name': model_name, 'resolution': resolution, 'lens_type': lens_type, 'price': price}
     elif transaction_type == TransactionType.T3:
-        if random.random() > 0.9:
-            server = 1 - server
-        # customer_id = random.randint(1, range) * 2
-        customer_id = random.randint(1, 1) * 2
+        customer_id = random.randint(1, range) * 2
         if server == 1:
             customer_id = customer_id - 1
         camera_id = 1
@@ -41,10 +35,7 @@ def generate_transaction_data(transaction_type, range=1, server=1):
         quantity = random.randint(1, 10)
         return {'customer_id': customer_id, 'camera_id': camera_id, 'quantity': quantity}   
     elif transaction_type == TransactionType.T5:
-        if random.random() > 0.9:
-            server = 1 - server
-        # customer_id = random.randint(1, range) * 2
-        customer_id = random.randint(1, 1) * 2
+        customer_id = random.randint(1, range) * 2
         if server == 1:
             customer_id = customer_id - 1
         return {'customer_id': customer_id}
@@ -73,7 +64,7 @@ async def send_testing_message(uri, server, loops=500):
             sleep_for = random.uniform(0.0001, 0.001)
             await asyncio.sleep(sleep_for)
             '''Choose transaction types, feel free to change it '''
-            transaction_type = random.choice(TX_LIST, weights=(0, 5, 0, 10, 10, 10, 10))
+            transaction_type = random.choice([TransactionType.T2,  TransactionType.T4, TransactionType.T6, TransactionType.T7])
 
             data = generate_transaction_data(transaction_type, range=added_lines)
             message = UserMessage(MessageType.USER, transaction_type, data)
@@ -97,7 +88,7 @@ async def send_testing_message(uri, server, loops=500):
             sleep_for = random.uniform(0.0001, 0.001)
             await asyncio.sleep(sleep_for)
             '''Choose transaction types, feel free to change it '''
-            transaction_type = random.choice(TX_LIST, weights=(5, 0, 10, 0, 5, 10, 5))
+            transaction_type = random.choice([TransactionType.T1,  TransactionType.T3, TransactionType.T5])
 
             data = generate_transaction_data(transaction_type, range=added_lines, server=server)
             message = UserMessage(MessageType.USER, transaction_type, data)

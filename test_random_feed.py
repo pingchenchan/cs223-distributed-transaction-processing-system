@@ -38,10 +38,12 @@ def generate_transaction_data(transaction_type):
         order_id = random.randint(1, 3)
         return {'order_id': order_id, 'customer_id': customer_id}
 
-async def send_testing_message(uri, server, loops=100):
+async def send_testing_message(uri, server, loops=500):
     messages = [] 
     start_time = time.time()
     for i in range(loops):
+        sleep_for = random.uniform(0.0001, 0.001)
+        await asyncio.sleep(sleep_for)
         # sleep_for = random.uniform(0.0001, 0.001)
         # await asyncio.sleep(sleep_for)
 
@@ -74,7 +76,7 @@ async def send_testing_message(uri, server, loops=100):
     print(f"Reply received in server-{ server}, elapsed_time ={elapsed_time:.2f} seconds, reply= {reply}")
 
     '''write transaction log to history table'''
-    await asyncio.sleep(3)
+    await asyncio.sleep(20)
     history_table = HistoryTable()
     await history_table.write_transaction_log(each_transaction=False)
     print(f"wrote transaction log ")
