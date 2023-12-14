@@ -347,6 +347,7 @@ class WebSocketClientForBatchMessage:
                         # print(f"sleep_time={sleep_time}")
                         await websocket.send(message)
                         reply = await websocket.recv()
+                    return reply
             except websockets.ConnectionClosedError as e:
                 print(f"Connection closed: {e}")
             except Exception as e:

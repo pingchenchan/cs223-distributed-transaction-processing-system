@@ -31,7 +31,7 @@ def generate_transaction_data(transaction_type):
         customer_id = random.randint(1, 3)
         return {'customer_id': customer_id}
     elif transaction_type == TransactionType.T6:
-        camera_id = random.randint(1, 3)
+        camera_id = random.randint(1, 10)
         return {'camera_id': camera_id}
     elif transaction_type == TransactionType.T7:
         customer_id = random.randint(1, 3)

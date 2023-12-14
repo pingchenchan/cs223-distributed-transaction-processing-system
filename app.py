@@ -4,13 +4,13 @@ import random
 import json
 from history_table import *
 from message import *
-from test_ideal_world import *
+# from test_ideal_world import *
 # from test_random_feed import *
-# from test_realworld_sim import *
+from test_realworld_sim import *
 from lock_manager import *
 import argparse
-SLEEP_TIME = 0.0001
-LOOPS = 100
+SLEEP_TIME = 0
+LOOPS = 1000
 
 # The two-phase locking protocol variant for concurrency control
 # where Transaction 3-4 can proceed only if Transaction 7 is not in progress, and vice versa.
@@ -149,7 +149,8 @@ async def listener_handler(websocket):
                     )
                     await priority_queue.put((client_id, hop_message))
                     hop_message.start_queue_wait()
-                # print (f"priority_queue.qsize is {priority_queue.qsize()}")
+                # if priority_queue.qsize() > 10:
+                #     print (f"priority_queue.qsize is {priority_queue.qsize()}")
 
             except json.JSONDecodeError:
                 print("Error parsing JSON")

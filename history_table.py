@@ -167,6 +167,11 @@ class HistoryTable:
             print(f"789 Transaction {transaction_id} not found.")
 
     async def write_transaction_log(self, each_transaction=True, filename=None):
+        
+        creat_time = datetime.now()
+
+        #end time is min datetime
+        end_time= datetime.min
         """Write the transaction log to a file."""
 
         total_latency = 0
@@ -205,6 +210,8 @@ class HistoryTable:
                 #         f"33Transaction {transaction_id} end time: {self.transactions[transaction_id].end_time}, start time: {self.transactions[transaction_id].start_time}\n"
                 #     )
                 if transaction.status == "Completed":
+                    creat_time= min(creat_time,transaction.start_time)
+                    end_time = max(end_time,transaction.end_time)
  
                     transaction_latency = (
                         transaction.end_time - transaction.start_time
@@ -261,6 +268,15 @@ class HistoryTable:
                     ] += 1
 
             f.write("\nOverall Summary\n")
+            
+            #write end_time - start_time
+            f.write(f"Current Time: {end_time.strftime('%Y-%m-%d %H:%M:%S:%f')}\n")
+            f.write(f"Start Time: {creat_time.strftime('%Y-%m-%d %H:%M:%S:%f')}\n")
+            f.write(f"End Time: {end_time.strftime('%Y-%m-%d %H:%M:%S:%f')}\n")
+            # total time in secends
+            f.write(f"Total Time: {(end_time - creat_time).total_seconds()} seconds\n")     
+
+
             f.write("---------------\n")
             avg_transaction_latency = (
                 total_latency / total_transactions if total_transactions > 0 else 0
@@ -354,3 +370,4 @@ class HistoryTable:
                 "--------------------------------------------------------------------------------------------------------------------\n"
             )
             f.write("\n")
+

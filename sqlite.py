@@ -54,7 +54,7 @@ async def build_db(CURRENT_SERVER_TYPE):
                 random.choice(["wide", "telephoto", "standard"]),
                 i * 100,
             )
-            for i in range(1, 110)
+            for i in range(1, 11)
         ]
         cursor.executemany("INSERT INTO Cameras VALUES (?,?,?,?,?)", cameras_data)
 
