@@ -1,4 +1,6 @@
 # CompSci223-project
+### Introduction
+This project is an implementation of a distributed transaction processing system using the techniques used in Yang Zhang et al. “Transaction chains: achieving serializability with low latency in geo-distributed storage systems”. The system is designed to ensure low transactional latency and fault tolerance, and to implement effective data partitioning strategies across geographic locations to improve data integrity and accessibility. This project utilize of transaction chopping and the analysis of SC-Cycles (Serializability and Commutativity Cycles)
 
 ### install library
 ```shell
@@ -14,20 +16,8 @@ brew install jq #for .sh file read config.json
 ### CONFIG
 - Please check config.json.
 
-### NOTE
-- Now, transaction_log files will be saved in the log folder.
-- Each server has its own database which is in the database folder.
-- In testing, it took 300 seconds to execute 10,000 transactions (on my macbook air).
-
-### IDEA
-- Study how to choose the best priority for each hop type.
-
-### Question
-
 
 ### Error handle
-
-
 - If you encounter the following error in a Unix-like environment::
 
 ```
