@@ -1,8 +1,8 @@
 # CompSci223-project
 ### Introduction
-●	This project is an implementation of a distributed transaction processing system using the techniques used in Yang Zhang et al. “Transaction chains: achieving serializability with low latency in geo-distributed storage systems”. 
-●	Utilized transaction chopping, SC-Cycles analysis, and two-phase locking to ensure low transactional latency in concurrency situations while maintaining fault tolerance. 
-●	Implemented effective data partitioning strategies across distributed nodes to improve data integrity and accessibility using Python,  WebSockets, and SQLite.
+-  This project is an implementation of a distributed transaction processing system using the techniques used in Yang Zhang et al. “Transaction chains: achieving serializability with low latency in geo-distributed storage systems”.
+-  Utilized transaction chopping, SC-Cycles analysis, and two-phase locking to ensure low transactional latency in concurrency situations while maintaining fault tolerance.
+-  Implemented effective data partitioning strategies across distributed nodes to improve data integrity and accessibility using Python,  WebSockets, and SQLite.
 
 
 ### install library
